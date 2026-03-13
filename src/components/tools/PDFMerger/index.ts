@@ -1,0 +1,1 @@
+export { PDFMerger } from './PDFMerger'

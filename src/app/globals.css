@@ -1,0 +1,142 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Modern SaaS Color Palette */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    
+    /* Brand Colors */
+    --primary: 262.1 83.3% 57.8%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 220 14.3% 95.9%;
+    --secondary-foreground: 220.9 39.3% 11%;
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 46.1%;
+    --accent: 220 14.3% 95.9%;
+    --accent-foreground: 220.9 39.3% 11%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 20% 98%;
+    
+    /* Borders & Inputs */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 262.1 83.3% 57.8%;
+    --radius: 0.75rem;
+    
+    /* Status Colors */
+    --success: 142.1 76.2% 36.3%;
+    --success-foreground: 355.7 100% 97.3%;
+    --warning: 32.2 95% 44.1%;
+    --warning-foreground: 355.7 100% 97.3%;
+    --error: 0 84.2% 60.2%;
+    --error-foreground: 210 20% 98%;
+    --info: 221.2 83.2% 53.3%;
+    --info-foreground: 210 20% 98%;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    
+    --primary: 263.4 70% 50.4%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 263.4 70% 50.4%;
+    
+    --success: 142.1 70.6% 45.3%;
+    --success-foreground: 144.9 80.4% 10%;
+    --warning: 32.2 95% 55%;
+    --warning-foreground: 20.5 90.2% 4.3%;
+    --error: 0 72.2% 50.6%;
+    --error-foreground: 0 0% 98%;
+    --info: 217.2 91.2% 59.8%;
+    --info-foreground: 222.2 84% 4.9%;
+  }
+
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  /* Modern Card Styles */
+  .tool-card {
+    @apply bg-card text-card-foreground rounded-xl border border-border/50 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer hover:border-primary/30 hover:-translate-y-1;
+  }
+  
+  /* Modern Gradient Backgrounds */
+  .gradient-bg {
+    @apply bg-gradient-to-br from-primary/5 via-background to-accent/5;
+  }
+  
+  .hero-gradient {
+    @apply bg-gradient-to-br from-primary/10 via-background to-secondary/20;
+  }
+  
+  /* Glass Effect */
+  .glass {
+    @apply bg-background/80 backdrop-blur-xl border border-border/50;
+  }
+  
+  /* Modern Button Variants */
+  .btn-gradient {
+    @apply bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:from-primary/90 hover:to-primary/70 shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+  
+  /* Status Indicators */
+  .status-ready {
+    @apply bg-success/10 text-success border border-success/20 px-3 py-1 rounded-full text-xs font-medium;
+  }
+  
+  .status-coming-soon {
+    @apply bg-warning/10 text-warning border border-warning/20 px-3 py-1 rounded-full text-xs font-medium;
+  }
+  
+  /* Modern Form Elements */
+  .form-input {
+    @apply w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all duration-200;
+  }
+  
+  /* Typography */
+  .heading-xl {
+    @apply text-4xl md:text-6xl font-bold tracking-tight;
+  }
+  
+  .heading-lg {
+    @apply text-3xl md:text-4xl font-bold tracking-tight;
+  }
+  
+  .heading-md {
+    @apply text-2xl md:text-3xl font-semibold tracking-tight;
+  }
+  
+  .text-balance {
+    text-wrap: balance;
+  }
+}

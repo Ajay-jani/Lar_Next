@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+
+# Allow all search engines to crawl the site
+Allow: /tools/
+Allow: /utilities/
+Allow: /privacy
+Allow: /contact
+
+# Disallow admin and API routes
+Disallow: /api/
+Disallow: /admin/
+Disallow: /_next/
+Disallow: /.*
+
+# Sitemap location
+Sitemap: https://utilityhub.com/sitemap.xml
+
+# Crawl delay (optional - be respectful to search engines)
+Crawl-delay: 1

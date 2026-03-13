@@ -1,0 +1,7 @@
+# ads.txt file for UtilityHub
+# This file will be updated when Google AdSense approval is obtained
+# 
+# Format: google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
+# 
+# Placeholder - DO NOT use in production until you have a real publisher ID
+# google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0

@@ -21,3 +21,5 @@ export function initializeApp() {
 if (typeof window === 'undefined') {
   initializeApp()
 }
+
+// new code here

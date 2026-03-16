@@ -18,6 +18,8 @@ export function Card({ children, className, padding = 'none' }: CardProps) {
   return (
     <div className={clsx(
       'rounded-lg border bg-card text-card-foreground shadow-sm',
+      'transition-all duration-300 ease-out motion-safe:hover:shadow-lg motion-safe:hover:-translate-y-1',
+      'motion-safe:animate-fade-in',
       padding !== 'none' && paddingClasses[padding],
       className
     )}>

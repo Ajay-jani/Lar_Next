@@ -1,8 +1,8 @@
 import React from 'react';
-import Link from 'next/link'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { ArrowRight, Zap, Shield, Rocket } from 'lucide-react'
+import Link from 'next/link';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { ArrowRight, Zap, Shield, Rocket } from 'lucide-react';
 
 export default function HomePage() {
   return (
@@ -11,7 +11,7 @@ export default function HomePage() {
       <section className="hero-gradient py-24 px-4 relative overflow-hidden">
         <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:50px_50px]" />
         <div className="container mx-auto text-center relative">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-4xl mx-auto animate-fade-in">
             <h1 className="heading-xl mb-6 text-balance">
               Essential Developer Tools
               <span className="text-primary block">Built for Speed</span>
@@ -42,7 +42,7 @@ export default function HomePage() {
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center group">
+            <div className="text-center group animate-slide-up">
               <div className="w-16 h-16 mx-auto mb-6 bg-primary/10 rounded-2xl flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                 <Zap className="h-8 w-8 text-primary" />
               </div>
@@ -51,7 +51,7 @@ export default function HomePage() {
                 All tools process data locally in your browser for instant results with zero latency
               </p>
             </div>
-            <div className="text-center group">
+            <div className="text-center group animate-slide-up">
               <div className="w-16 h-16 mx-auto mb-6 bg-success/10 rounded-2xl flex items-center justify-center group-hover:bg-success/20 transition-colors">
                 <Shield className="h-8 w-8 text-success" />
               </div>
@@ -60,7 +60,7 @@ export default function HomePage() {
                 Your files never leave your device. Complete privacy guaranteed with client-side processing
               </p>
             </div>
-            <div className="text-center group">
+            <div className="text-center group animate-slide-up">
               <div className="w-16 h-16 mx-auto mb-6 bg-warning/10 rounded-2xl flex items-center justify-center group-hover:bg-warning/20 transition-colors">
                 <Rocket className="h-8 w-8 text-warning" />
               </div>
@@ -84,7 +84,7 @@ export default function HomePage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <Link href="/tools/image-compressor" className="group">
-              <Card className="tool-card h-full">
+              <Card className="tool-card h-full animate-fade-in">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     Image Compressor
@@ -100,7 +100,7 @@ export default function HomePage() {
             </Link>
             
             <Link href="/tools/image-converter" className="group">
-              <Card className="tool-card h-full">
+              <Card className="tool-card h-full animate-fade-in">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     Image Converter
@@ -116,7 +116,7 @@ export default function HomePage() {
             </Link>
             
             <Link href="/tools/pdf-compressor" className="group">
-              <Card className="tool-card h-full">
+              <Card className="tool-card h-full animate-fade-in">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     PDF Compressor

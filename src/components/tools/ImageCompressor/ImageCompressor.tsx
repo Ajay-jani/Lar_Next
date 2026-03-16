@@ -19,7 +19,9 @@ interface CompressionResult {
   downloadUrl: string
 }
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+// Allow larger images while still being safe for in-browser processing.
+// 100MB = 100 * 1024 * 1024 bytes.
+const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100MB
 const SUPPORTED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
 
 export function ImageCompressor() {
@@ -64,7 +66,7 @@ export function ImageCompressor() {
       return 'Please select a valid image file (JPG, PNG, or WebP)'
     }
     if (file.size > MAX_FILE_SIZE) {
-      return 'File size must be less than 10MB'
+      return 'File size must be less than 100MB'
     }
     return null
   }, [])
@@ -316,7 +318,7 @@ export function ImageCompressor() {
                   Click to select an image
                 </p>
                 <p className="text-muted-foreground text-sm">
-                  Supports JPG, PNG, WebP (max 10MB)
+                  Supports JPG, PNG, WebP (max 100MB)
                 </p>
               </label>
             </div>

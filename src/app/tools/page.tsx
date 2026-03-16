@@ -1,6 +1,6 @@
 import React from 'react';
-import Link from 'next/link'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
+import Link from 'next/link';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { 
   Image, 
   FileImage, 
@@ -14,7 +14,7 @@ import {
   FileEdit,
   Hash,
   Share2
-} from 'lucide-react'
+} from 'lucide-react';
 
 const tools = [
   {
@@ -115,13 +115,15 @@ const tools = [
   }
 ]
 
-const categories = [...new Set(tools.map(tool => tool.category))]
+const categories = [...new Set(tools.map(tool => tool.category))];
 
 export default function ToolsPage() {
   return (
     <div className="container mx-auto px-4 py-12">
-      <div className="text-center mb-16">
-        <h1 className="heading-lg mb-4 text-balance">Developer Tools</h1>
+      <div className="text-center mb-16 animate-fade-in">
+        <h1 className="heading-lg mb-4 text-balance">
+          Developer Tools
+        </h1>
         <p className="text-muted-foreground text-lg max-w-2xl mx-auto text-balance">
           Essential utilities for developers, designers, and content creators
         </p>
@@ -131,14 +133,19 @@ export default function ToolsPage() {
         const categoryTools = tools.filter(tool => tool.category === category)
         
         return (
-          <div key={category} className="mb-16">
-            <h2 className="text-2xl font-semibold mb-8 text-foreground">{category}</h2>
+          <div
+            key={category}
+            className="mb-16 animate-slide-up"
+          >
+            <h2 className="text-2xl font-semibold mb-8 text-foreground">
+              {category}
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {categoryTools.map((tool) => {
                 const IconComponent = tool.icon
                 return (
                   <Link key={tool.href} href={tool.href} className="group">
-                    <Card className="tool-card h-full">
+                    <Card className="tool-card h-full animate-fade-in">
                       <CardHeader>
                         <div className="flex items-start justify-between mb-2">
                           <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center group-hover:bg-primary/20 transition-colors">

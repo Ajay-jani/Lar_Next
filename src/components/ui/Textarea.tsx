@@ -10,9 +10,9 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ label, error, helperText, className, ...props }, ref) => {
     return (
-      <div className="w-full">
+      <div className="w-full space-y-1.5">
         {label && (
-          <label className="block text-sm font-medium text-primary mb-2">
+          <label className="block text-xs md:text-sm font-medium text-text-secondary">
             {label}
           </label>
         )}
@@ -28,6 +28,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             // Disabled states
             'disabled:bg-input-disabled-bg disabled:text-input-disabled-text disabled:cursor-not-allowed',
             // Error states
+            'transition-shadow duration-200 ease-out',
+            'motion-safe:animate-fade-in',
             error && 'border-error focus:ring-error focus:border-error',
             className
           )}

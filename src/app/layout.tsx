@@ -1,6 +1,5 @@
 import React from 'react';
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import Link from 'next/link';
 import { ThemeProvider } from '@/lib/providers/ThemeProvider';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
@@ -9,8 +8,6 @@ import './globals.css';
 
 // Initialize the application (including cron jobs)
 import '@/lib/startup';
-
-const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'UtilityHub - 50+ Essential Online Tools',
@@ -25,7 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className="font-sans antialiased">
         <ThemeProvider defaultTheme="system" storageKey="utility-hub-theme">
           <div className="min-h-screen bg-background">
             <header className="sticky top-0 z-50 w-full glass border-b">

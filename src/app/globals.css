@@ -117,6 +117,10 @@
   .status-coming-soon {
     @apply bg-warning/10 text-warning border border-warning/20 px-3 py-1 rounded-full text-xs font-medium;
   }
+
+  .status-new {
+    @apply bg-info/10 text-info border border-info/20 px-3 py-1 rounded-full text-xs font-medium;
+  }
   
   /* Modern Form Elements */
   .form-input {

@@ -1,0 +1,1 @@
+export { PDFPageExtractor } from './PDFPageExtractor'

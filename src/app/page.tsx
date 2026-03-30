@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ArrowRight, Zap, Shield, Rocket } from 'lucide-react';
+import { featuredTools } from '@/lib/tool-catalog';
 
 export default function HomePage() {
   return (
@@ -13,12 +14,12 @@ export default function HomePage() {
         <div className="container mx-auto text-center relative">
           <div className="max-w-4xl mx-auto animate-fade-in">
             <h1 className="heading-xl mb-6 text-balance">
-              Essential Developer Tools
-              <span className="text-primary block">Built for Speed</span>
+              Fast Online Utilities
+              <span className="text-primary block">Built for Real Tasks</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8 leading-relaxed text-balance">
-              Free, fast, and secure online tools for image processing, PDF manipulation, 
-              and more. All processing happens in your browser for maximum privacy.
+              Free, fast, and secure tools for PDF workflows, image processing, text summaries,
+              and developer tasks. Everything is designed to feel immediate and privacy-first.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/tools">
@@ -77,59 +78,56 @@ export default function HomePage() {
       <section className="py-20 px-4 bg-muted/30">
         <div className="container mx-auto">
           <div className="text-center mb-16">
-            <h2 className="heading-lg mb-4 text-balance">Featured Tools</h2>
+            <h2 className="heading-lg mb-4 text-balance">Featured Utilities</h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto text-balance">
-              Start with our most popular and powerful utilities
+              Start with the fastest workflows and the newest tools we just completed
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <Link href="/tools/image-compressor" className="group">
-              <Card className="tool-card h-full animate-fade-in">
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    Image Compressor
-                    <span className="status-ready">Ready</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground leading-relaxed">
-                    Reduce image file size while maintaining quality. Perfect for web optimization and faster loading.
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-            
-            <Link href="/tools/image-converter" className="group">
-              <Card className="tool-card h-full animate-fade-in">
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    Image Converter
-                    <span className="status-coming-soon">Soon</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground leading-relaxed">
-                    Convert images between different formats including JPG, PNG, WebP, and AVIF.
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-            
-            <Link href="/tools/pdf-compressor" className="group">
-              <Card className="tool-card h-full animate-fade-in">
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    PDF Compressor
-                    <span className="status-coming-soon">Soon</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground leading-relaxed">
-                    Reduce PDF file size while maintaining document quality and readability.
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
+            {featuredTools.map((tool) => {
+              const IconComponent = tool.icon
+
+              return (
+                <Link key={tool.href} href={tool.href} className="group">
+                  <Card className="tool-card h-full animate-fade-in">
+                    <CardHeader className="space-y-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                          <IconComponent className="h-6 w-6 text-primary" />
+                        </div>
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <span className="rounded-full border border-info/20 bg-info/10 px-3 py-1 text-xs font-medium text-info">
+                            {tool.speedLabel}
+                          </span>
+                          <span className={tool.status === 'new' ? 'status-new' : 'status-ready'}>
+                            {tool.status === 'new' ? 'New' : 'Ready'}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-2">{tool.categoryLabel}</p>
+                        <CardTitle className="text-xl">{tool.name}</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <p className="text-muted-foreground leading-relaxed">
+                        {tool.description}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {tool.highlights.slice(0, 2).map((highlight) => (
+                          <span
+                            key={highlight}
+                            className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground"
+                          >
+                            {highlight}
+                          </span>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              )
+            })}
           </div>
           
           <div className="text-center mt-12">

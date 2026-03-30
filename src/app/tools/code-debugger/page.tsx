@@ -1,10 +1,10 @@
-import ComingSoon from '@/components/ComingSoon'
+import { CodeDebugger } from '@/components/tools/CodeDebugger'
 
 export default function CodeDebuggerPage() {
-  return (
-    <ComingSoon 
-      toolName="Code Debugger"
-      description="Debug and analyze your code with intelligent error detection and suggestions."
-    />
-  )
+  return <CodeDebugger />
+}
+
+export const metadata = {
+  title: 'Code Debugger - UtilityHub',
+  description: 'Analyze JavaScript, TypeScript, and JSON for common code smells, risky patterns, and syntax issues.',
 }

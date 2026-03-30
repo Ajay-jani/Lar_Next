@@ -1,0 +1,1 @@
+export { PDFRotator } from './PDFRotator'

@@ -1,13 +1,11 @@
 'use client'
 
-import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { PDFDocument } from 'pdf-lib'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
 
 interface CompressionSettings {
-  quality: number
-  imageQuality: number
   compressionMode: 'balanced' | 'maximum' | 'lossless'
 }
 
@@ -23,18 +21,16 @@ const SUPPORTED_TYPES = ['application/pdf']
 export function PDFCompressor() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [settings, setSettings] = useState<CompressionSettings>({
-    quality: 80,
-    imageQuality: 70,
-    compressionMode: 'balanced'
+    compressionMode: 'balanced',
   })
   const [isProcessing, setIsProcessing] = useState(false)
   const [result, setResult] = useState<CompressionResult | null>(null)
   const [error, setError] = useState<string | null>(null)
-  
-  // Refs for cleanup
+  const [note, setNote] = useState<string | null>(null)
+  const [hasAutoOptimized, setHasAutoOptimized] = useState(false)
+
   const resultUrlRef = useRef<string | null>(null)
 
-  // Cleanup URLs on unmount and when result changes
   useEffect(() => {
     return () => {
       if (resultUrlRef.current) {
@@ -43,7 +39,6 @@ export function PDFCompressor() {
     }
   }, [])
 
-  // Cleanup previous result URL when new result is set
   useEffect(() => {
     if (resultUrlRef.current && result?.downloadUrl !== resultUrlRef.current) {
       URL.revokeObjectURL(resultUrlRef.current)
@@ -55,19 +50,83 @@ export function PDFCompressor() {
     if (!SUPPORTED_TYPES.includes(file.type)) {
       return 'Please select a valid PDF file'
     }
+
     if (file.size > MAX_FILE_SIZE) {
       return 'File size must be less than 50MB'
     }
+
     return null
   }, [])
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    
-    // Clear previous state
+  const runOptimization = useCallback(async (
+    file: File,
+    mode: CompressionSettings['compressionMode']
+  ) => {
+    setIsProcessing(true)
     setError(null)
+    setNote(null)
+
+    try {
+      const sourceBuffer = await file.arrayBuffer()
+      const pdfDoc = await PDFDocument.load(sourceBuffer, {
+        updateMetadata: false,
+      })
+
+      if (mode === 'maximum') {
+        pdfDoc.setTitle('')
+        pdfDoc.setAuthor('')
+        pdfDoc.setSubject('')
+        pdfDoc.setKeywords([])
+        pdfDoc.setProducer('')
+        pdfDoc.setCreator('')
+      }
+
+      const optimizedBytes = await pdfDoc.save({
+        useObjectStreams: mode !== 'lossless',
+        addDefaultPage: false,
+        updateFieldAppearances: false,
+        objectsPerTick: mode === 'maximum' ? 25 : 50,
+      })
+
+      const optimizedBlob = new Blob([new Uint8Array(optimizedBytes)], {
+        type: 'application/pdf',
+      })
+
+      await PDFDocument.load(await optimizedBlob.arrayBuffer(), {
+        updateMetadata: false,
+      })
+
+      const downloadUrl = URL.createObjectURL(optimizedBlob)
+      setResult({
+        originalSize: file.size,
+        newSize: optimizedBlob.size,
+        downloadUrl,
+      })
+
+      if (optimizedBlob.size >= file.size) {
+        setNote(
+          'The default quick optimization finished, but this PDF was already compact so the new file is not smaller.'
+        )
+      } else if (!hasAutoOptimized && mode === 'balanced') {
+        setNote('Quick optimization finished automatically. Download now or try another mode.')
+      } else {
+        setNote('PDF optimization completed successfully.')
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'PDF optimization failed'
+      setError(message)
+    } finally {
+      setIsProcessing(false)
+    }
+  }, [hasAutoOptimized])
+
+  const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+
+    setError(null)
+    setNote(null)
     setResult(null)
-    
+
     if (!file) {
       setSelectedFile(null)
       return
@@ -81,70 +140,20 @@ export function PDFCompressor() {
     }
 
     setSelectedFile(file)
-  }, [validateFile])
+    setSettings({ compressionMode: 'balanced' })
+    setHasAutoOptimized(false)
+    void runOptimization(file, 'balanced').then(() => {
+      setHasAutoOptimized(true)
+    })
+  }, [runOptimization, validateFile])
 
-  const compressPDF = useCallback(async () => {
+  const optimizePDF = useCallback(async (mode = settings.compressionMode) => {
     if (!selectedFile) return
-    
-    setIsProcessing(true)
-    setError(null)
-    
-    try {
-      // For now, we'll simulate PDF compression
-      // In a real implementation, you would use a PDF library like PDF-lib
-      const result = await new Promise<CompressionResult>((resolve, reject) => {
-        // Simulate processing time
-        setTimeout(() => {
-          try {
-            // Create a simulated compressed file
-            // In reality, this would involve actual PDF processing
-            const compressionRatio = settings.compressionMode === 'maximum' ? 0.4 : 
-                                   settings.compressionMode === 'balanced' ? 0.6 : 0.8
-            
-            const simulatedSize = Math.floor(selectedFile.size * compressionRatio)
-            
-            // Create a blob with the original file (simulation)
-            const blob = new Blob([selectedFile], { type: 'application/pdf' })
-            const downloadUrl = URL.createObjectURL(blob)
-            
-            resolve({
-              originalSize: selectedFile.size,
-              newSize: simulatedSize,
-              downloadUrl
-            })
-          } catch (err) {
-            reject(err)
-          }
-        }, 2000) // Simulate 2 second processing time
-      })
-      
-      setResult(result)
-      
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Compression failed'
-      setError(errorMessage)
-    } finally {
-      setIsProcessing(false)
-    }
-  }, [selectedFile, settings])
 
-  const updateQuality = useCallback((value: string) => {
-    const quality = parseInt(value, 10)
-    if (!isNaN(quality) && quality >= 10 && quality <= 100) {
-      setSettings(prev => ({ ...prev, quality }))
-    }
-  }, [])
-
-  const updateImageQuality = useCallback((value: string) => {
-    const imageQuality = parseInt(value, 10)
-    if (!isNaN(imageQuality) && imageQuality >= 10 && imageQuality <= 100) {
-      setSettings(prev => ({ ...prev, imageQuality }))
-    }
-  }, [])
-
-  const updateCompressionMode = useCallback((mode: CompressionSettings['compressionMode']) => {
-    setSettings(prev => ({ ...prev, compressionMode: mode }))
-  }, [])
+    setSettings({ compressionMode: mode })
+    await runOptimization(selectedFile, mode)
+    setHasAutoOptimized(true)
+  }, [runOptimization, selectedFile, settings.compressionMode])
 
   const formatFileSize = useCallback((bytes: number): string => {
     if (bytes === 0) return '0 Bytes'
@@ -154,19 +163,24 @@ export function PDFCompressor() {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
   }, [])
 
-  const compressionRatio = useMemo(() => {
+  const sizeDelta = useMemo(() => {
     if (!result) return 0
-    return ((result.originalSize - result.newSize) / result.originalSize) * 100
+    return result.originalSize - result.newSize
   }, [result])
 
+  const sizeChangePercent = useMemo(() => {
+    if (!result || result.originalSize === 0) return 0
+    return (sizeDelta / result.originalSize) * 100
+  }, [result, sizeDelta])
+
   const downloadFileName = useMemo(() => {
-    if (!selectedFile) return 'compressed_document.pdf'
-    
+    if (!selectedFile) return 'optimized_document.pdf'
+
     const name = selectedFile.name
     const lastDot = name.lastIndexOf('.')
     const nameWithoutExt = lastDot > 0 ? name.substring(0, lastDot) : name
-    
-    return `compressed_${nameWithoutExt}.pdf`
+
+    return `optimized_${nameWithoutExt}.pdf`
   }, [selectedFile])
 
   return (
@@ -174,22 +188,26 @@ export function PDFCompressor() {
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold text-foreground mb-4">PDF Compressor</h1>
         <p className="text-muted-foreground text-lg">
-          Reduce PDF file size while maintaining document quality and readability.
+          Upload once and get an instant balanced optimization, then only open settings if you
+          want to push for a smaller or higher-fidelity result.
         </p>
         <div className="flex justify-center gap-4 mt-4 text-sm">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-primary rounded-full"></div>
-            <span className="text-muted-foreground">Balanced: Best quality/size ratio</span>
+            <span className="text-muted-foreground">Real PDF optimization</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-success rounded-full"></div>
+            <span className="text-muted-foreground">In-browser processing</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-warning rounded-full"></div>
-            <span className="text-muted-foreground">Maximum: Smallest file size</span>
+            <span className="text-muted-foreground">True size reporting</span>
           </div>
         </div>
       </div>
 
       <div className="space-y-6">
-        {/* Upload Section */}
         <Card>
           <CardHeader>
             <CardTitle>Upload PDF</CardTitle>
@@ -205,22 +223,28 @@ export function PDFCompressor() {
                 aria-label="Select PDF file"
               />
               <label htmlFor="file-upload" className="cursor-pointer block">
-                <div className="text-4xl mb-4" role="img" aria-label="Upload icon">📄</div>
+                <div className="text-4xl mb-4" role="img" aria-label="Upload icon">PDF</div>
                 <p className="text-foreground font-medium mb-2">
                   Click to select a PDF file
                 </p>
                 <p className="text-muted-foreground text-sm">
-                  Supports PDF files (max 50MB)
+                  Supports PDF files up to 50MB
                 </p>
               </label>
             </div>
-            
+
             {error && (
               <div className="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
                 <p className="text-destructive text-sm font-medium">{error}</p>
               </div>
             )}
-            
+
+            {note && !error && (
+              <div className="mt-4 p-4 bg-primary/10 border border-primary/20 rounded-lg">
+                <p className="text-primary text-sm font-medium">{note}</p>
+              </div>
+            )}
+
             {selectedFile && (
               <div className="mt-4 p-4 bg-muted rounded-lg">
                 <p className="text-foreground font-medium">{selectedFile.name}</p>
@@ -232,137 +256,85 @@ export function PDFCompressor() {
           </CardContent>
         </Card>
 
-        {/* Settings Section */}
         {selectedFile && !error && (
           <Card>
             <CardHeader>
-              <CardTitle>Compression Settings</CardTitle>
+              <CardTitle>Quick Modes</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Compression Mode Selector */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-3">
-                  Compression Mode
-                </label>
-                <div className="grid grid-cols-3 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => updateCompressionMode('balanced')}
-                    className={`p-3 rounded-lg border text-left transition-all ${
-                      settings.compressionMode === 'balanced'
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border bg-background hover:bg-muted/50'
-                    }`}
-                  >
-                    <div className="font-medium">Balanced</div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Good quality & size
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => updateCompressionMode('maximum')}
-                    className={`p-3 rounded-lg border text-left transition-all ${
-                      settings.compressionMode === 'maximum'
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border bg-background hover:bg-muted/50'
-                    }`}
-                  >
-                    <div className="font-medium">Maximum</div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Smallest file size
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => updateCompressionMode('lossless')}
-                    className={`p-3 rounded-lg border text-left transition-all ${
-                      settings.compressionMode === 'lossless'
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border bg-background hover:bg-muted/50'
-                    }`}
-                  >
-                    <div className="font-medium">Lossless</div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      No quality loss
-                    </div>
-                  </button>
+              {isProcessing && (
+                <div className="rounded-lg border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-primary">
+                  Optimizing your PDF now...
                 </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  onClick={() => void optimizePDF('balanced')}
+                  disabled={isProcessing}
+                  className={`p-3 rounded-lg border text-left transition-all ${
+                    settings.compressionMode === 'balanced'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border bg-background hover:bg-muted/50'
+                  }`}
+                >
+                  <div className="font-medium">Balanced</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Rewrites the PDF with object-stream optimization.
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void optimizePDF('maximum')}
+                  disabled={isProcessing}
+                  className={`p-3 rounded-lg border text-left transition-all ${
+                    settings.compressionMode === 'maximum'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border bg-background hover:bg-muted/50'
+                  }`}
+                >
+                  <div className="font-medium">Maximum</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Also strips optional metadata for smaller output.
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void optimizePDF('lossless')}
+                  disabled={isProcessing}
+                  className={`p-3 rounded-lg border text-left transition-all ${
+                    settings.compressionMode === 'lossless'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border bg-background hover:bg-muted/50'
+                  }`}
+                >
+                  <div className="font-medium">Lossless</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Rebuilds the PDF without stripping metadata.
+                  </div>
+                </button>
               </div>
 
-              {/* Quality Settings - only show for non-lossless modes */}
-              {settings.compressionMode !== 'lossless' && (
-                <>
-                  <div>
-                    <label htmlFor="quality-slider" className="block text-sm font-medium text-foreground mb-2">
-                      Document Quality: {settings.quality}%
-                    </label>
-                    <Input
-                      id="quality-slider"
-                      type="range"
-                      min="10"
-                      max="100"
-                      step="1"
-                      value={settings.quality}
-                      onChange={(e) => updateQuality(e.target.value)}
-                      className="w-full"
-                      aria-label={`Document quality: ${settings.quality}%`}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Higher quality = larger file size
-                    </p>
-                  </div>
-
-                  <div>
-                    <label htmlFor="image-quality-slider" className="block text-sm font-medium text-foreground mb-2">
-                      Image Quality: {settings.imageQuality}%
-                    </label>
-                    <Input
-                      id="image-quality-slider"
-                      type="range"
-                      min="10"
-                      max="100"
-                      step="1"
-                      value={settings.imageQuality}
-                      onChange={(e) => updateImageQuality(e.target.value)}
-                      className="w-full"
-                      aria-label={`Image quality: ${settings.imageQuality}%`}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Quality of images within the PDF
-                    </p>
-                  </div>
-                </>
-              )}
-
-              {settings.compressionMode === 'lossless' && (
-                <div className="p-3 bg-success/10 border border-success/20 rounded-lg">
-                  <p className="text-sm text-success font-medium">
-                    🔒 Lossless Mode: Perfect quality preservation
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    File size reduction through optimization without quality loss
+              <details className="rounded-lg border border-border bg-muted/20">
+                <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-foreground">
+                  Advanced explanation
+                </summary>
+                <div className="px-4 pb-4">
+                  <p className="text-sm text-muted-foreground">
+                    This tool performs browser-safe structural optimization. It does not recompress
+                    embedded images, so already-optimized PDFs may stay the same size or grow slightly.
                   </p>
                 </div>
-              )}
-
-              <Button 
-                onClick={compressPDF}
-                disabled={isProcessing || !selectedFile}
-                className="w-full"
-                aria-label={isProcessing ? 'Compressing PDF...' : 'Compress PDF'}
-              >
-                {isProcessing ? 'Compressing PDF...' : 'Compress PDF'}
-              </Button>
+              </details>
             </CardContent>
           </Card>
         )}
 
-        {/* Results Section */}
         {result && (
           <Card>
             <CardHeader>
-              <CardTitle>Compression Results</CardTitle>
+              <CardTitle>Optimization Results</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-3 gap-4 mb-6 text-center">
@@ -376,24 +348,28 @@ export function PDFCompressor() {
                   <div className="text-2xl font-bold text-success">
                     {formatFileSize(result.newSize)}
                   </div>
-                  <div className="text-muted-foreground text-sm">Compressed</div>
+                  <div className="text-muted-foreground text-sm">Optimized</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-info">
-                    {compressionRatio.toFixed(1)}%
+                  <div
+                    className={`text-2xl font-bold ${
+                      sizeDelta >= 0 ? 'text-info' : 'text-warning'
+                    }`}
+                  >
+                    {sizeChangePercent.toFixed(1)}%
                   </div>
-                  <div className="text-muted-foreground text-sm">Saved</div>
+                  <div className="text-muted-foreground text-sm">Size Change</div>
                 </div>
               </div>
-              
+
               <a
                 href={result.downloadUrl}
                 download={downloadFileName}
                 className="block"
-                aria-label={`Download compressed PDF: ${downloadFileName}`}
+                aria-label={`Download optimized PDF: ${downloadFileName}`}
               >
                 <Button className="w-full">
-                  Download Compressed PDF
+                  Download Optimized PDF
                 </Button>
               </a>
             </CardContent>

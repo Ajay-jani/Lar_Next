@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 
 // Types
-type HashAlgorithm = 'md5' | 'sha1' | 'sha256' | 'sha512' | 'hmac-sha256' | 'crc32'
+type HashAlgorithm = 'sha1' | 'sha256' | 'sha512' | 'hmac-sha256' | 'crc32'
 type OutputFormat = 'hex' | 'base64'
 type MainTab = 'hash' | 'encrypt'
 type EncryptionMode = 'encrypt' | 'decrypt'
@@ -21,17 +21,6 @@ interface HashResult {
   fileSize?: number
 }
 
-interface EncryptionResult {
-  mode: EncryptionMode
-  input: string
-  output: string
-  computeTime: number
-  inputType: 'text' | 'file'
-  fileName?: string
-  fileSize?: number
-  success: boolean
-}
-
 interface AlgorithmInfo {
   name: string
   description: string
@@ -41,13 +30,6 @@ interface AlgorithmInfo {
 }
 
 const ALGORITHMS: Record<HashAlgorithm, AlgorithmInfo> = {
-  md5: {
-    name: 'MD5',
-    description: 'Message Digest Algorithm 5 - produces 128-bit hash',
-    useCase: 'File integrity checks, checksums (not for security)',
-    security: 'Low',
-    speed: 'Fast'
-  },
   sha1: {
     name: 'SHA-1',
     description: 'Secure Hash Algorithm 1 - produces 160-bit hash',
@@ -138,10 +120,6 @@ export function HashGenerator() {
       let hashBuffer: ArrayBuffer
 
       switch (algorithm) {
-        case 'md5':
-          // Fallback to SHA-256 for MD5 (browser limitation)
-          hashBuffer = await crypto.subtle.digest('SHA-256', data)
-          break
         case 'sha1':
           hashBuffer = await crypto.subtle.digest('SHA-1', data)
           break
@@ -355,7 +333,6 @@ export function HashGenerator() {
     try {
       const startTime = performance.now()
       let output: string
-      let success = true
 
       if (encryptionMode === 'encrypt') {
         output = await encryptData(encryptionInput, encryptionKey)
@@ -366,12 +343,10 @@ export function HashGenerator() {
           setSuccess(`Text decrypted successfully in ${(performance.now() - startTime).toFixed(2)}ms`)
         } catch (err) {
           output = ''
-          success = false
           setError(err instanceof Error ? err.message : 'Decryption failed')
         }
       }
 
-      const computeTime = performance.now() - startTime
       setEncryptionOutput(output)
 
 
@@ -875,7 +850,7 @@ export function HashGenerator() {
                 {mainTab === 'hash' ? (
                   <>
                     <p>• Generate cryptographic hashes for data integrity</p>
-                    <p>• Support for MD5, SHA-1, SHA-256, SHA-512, HMAC, CRC32</p>
+                    <p>• Support for SHA-1, SHA-256, SHA-512, HMAC, CRC32</p>
                     <p>• Real-time hash generation</p>
                     <p>• Compare hashes for verification</p>
                     <p>• All processing happens locally</p>

@@ -144,15 +144,12 @@ export function PDFMerger() {
       }
 
       setPdfFiles(prev => [...prev, ...newPdfFiles])
-      if (!selectedFile && newPdfFiles.length > 0) {
-        setSelectedFile(newPdfFiles[0])
-      }
     } catch (err) {
       setError('Failed to analyze PDF files')
     } finally {
       setIsAnalyzing(false)
     }
-  }, [selectedFile, analyzePDF])
+  }, [analyzePDF])
 
   // Drag and drop handlers
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -198,7 +195,7 @@ export function PDFMerger() {
         URL.revokeObjectURL(removedFile.thumbnail)
       }
       if (selectedFile?.id === id) {
-        setSelectedFile(updated[0] || null)
+        setSelectedFile(null)
       }
       return updated
     })
@@ -222,6 +219,13 @@ export function PDFMerger() {
   const clearPageSelection = useCallback((fileId: string) => {
     updatePageSelection(fileId, [])
   }, [updatePageSelection])
+
+  const keepFirstPageFromEachFile = useCallback(() => {
+    setPdfFiles(prev => prev.map(pdf => ({
+      ...pdf,
+      selectedPages: pdf.pageCount && pdf.pageCount > 0 ? [1] : [],
+    })))
+  }, [])
 
   // Advanced PDF merging using PDF-lib
   const createMergedPDF = useCallback(async (files: PDFFile[]): Promise<Blob> => {
@@ -386,7 +390,7 @@ export function PDFMerger() {
       <div className="text-center mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-2 sm:mb-4">Advanced PDF Merger</h1>
         <p className="text-muted-foreground text-sm sm:text-base lg:text-lg px-2">
-          Professional PDF merging with page selection and advanced options
+          Upload your PDFs and merge them right away. Page-level controls stay available, but out of the way until you need them.
         </p>
         <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mt-3 sm:mt-4 text-xs sm:text-sm">
           <div className="flex items-center gap-2">
@@ -517,92 +521,45 @@ export function PDFMerger() {
                             </div>
                           </div>
 
-                          {/* Inline Page Selection */}
-                          <div className="mt-3 sm:mt-4 space-y-3">
-                            {/* Quick Actions */}
-                            <div className="flex flex-wrap gap-1 sm:gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  selectAllPages(pdf.id)
-                                }}
-                                className="text-xs h-6 sm:h-7 px-2 sm:px-3"
-                                disabled={pdf.selectedPages?.length === pdf.pageCount}
-                              >
-                                ✓ All
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  clearPageSelection(pdf.id)
-                                }}
-                                className="text-xs h-6 sm:h-7 px-2 sm:px-3"
-                                disabled={!pdf.selectedPages?.length}
-                              >
-                                ✗ Clear
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setSelectedFile(pdf)
-                                }}
-                                className="text-xs h-6 sm:h-7 px-2 sm:px-3"
-                              >
-                                🔧 Advanced
-                              </Button>
-                            </div>
-
-                            {/* Inline Page Grid */}
-                            <div className="bg-muted/30 rounded-lg p-2 sm:p-3">
-                              <div className="text-xs font-medium text-foreground mb-2">
-                                Click pages to select/deselect:
-                              </div>
-                              <div className="grid grid-cols-6 sm:grid-cols-8 lg:grid-cols-10 gap-1 max-h-20 sm:max-h-24 overflow-y-auto">
-                                {Array.from({ length: Math.min(pdf.pageCount || 0, 32) }, (_, i) => i + 1).map(pageNum => {
-                                  const isSelected = pdf.selectedPages?.includes(pageNum)
-                                  return (
-                                    <button
-                                      key={pageNum}
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        const currentPages = pdf.selectedPages || []
-                                        const newPages = isSelected 
-                                          ? currentPages.filter(p => p !== pageNum)
-                                          : [...currentPages, pageNum].sort((a, b) => a - b)
-                                        updatePageSelection(pdf.id, newPages)
-                                      }}
-                                      className={`
-                                        text-[9px] sm:text-[10px] p-1 rounded border transition-all duration-200 
-                                        hover:scale-105 sm:hover:scale-110 font-medium min-h-[20px] sm:min-h-[24px]
-                                        ${isSelected
-                                          ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                                          : 'bg-background text-foreground border-border hover:border-primary/50 hover:bg-primary/10'
-                                        }
-                                      `}
-                                    >
-                                      {pageNum}
-                                    </button>
-                                  )
-                                })}
-                                {(pdf.pageCount || 0) > 32 && (
-                                  <div className="col-span-2 text-[9px] sm:text-[10px] text-muted-foreground flex items-center justify-center">
-                                    +{(pdf.pageCount || 0) - 32} more
-                                  </div>
-                                )}
-                              </div>
-                              {(pdf.pageCount || 0) > 32 && (
-                                <div className="text-xs text-muted-foreground mt-2">
-                                  💡 Use &quot;Advanced&quot; for full page selection on large PDFs
-                                </div>
-                              )}
-                            </div>
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
+                              {pdf.selectedPages?.length || 0} / {pdf.pageCount || 0} pages selected
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                selectAllPages(pdf.id)
+                              }}
+                              className="text-xs h-7 px-3"
+                              disabled={pdf.selectedPages?.length === pdf.pageCount}
+                            >
+                              All Pages
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                clearPageSelection(pdf.id)
+                              }}
+                              className="text-xs h-7 px-3"
+                              disabled={!pdf.selectedPages?.length}
+                            >
+                              Clear
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedFile(pdf)
+                              }}
+                              className="text-xs h-7 px-3"
+                            >
+                              Choose Pages
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -611,7 +568,7 @@ export function PDFMerger() {
                 </div>
                 
                 <p className="text-xs text-muted-foreground mt-4">
-                  💡 Drag and drop files to reorder • Click page numbers to select/deselect • Use &quot;Advanced&quot; for large PDFs
+                  Good to go by default: all pages are already selected in upload order. Click a file only if you want custom page selection.
                 </p>
               </CardContent>
             </Card>
@@ -943,12 +900,11 @@ export function PDFMerger() {
             </Card>
           )}
 
-          {/* Merge Options */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Merge Options</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <details className="rounded-xl border border-border bg-muted/20">
+            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-foreground">
+              Optional output settings
+            </summary>
+            <div className="space-y-4 px-4 pb-4">
               <div>
                 <label htmlFor="output-name" className="block text-sm font-medium text-foreground mb-2">
                   Output Filename
@@ -1014,8 +970,8 @@ export function PDFMerger() {
                   </label>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </details>
 
           {/* All Files Overview */}
           {pdfFiles.length > 0 && (
@@ -1075,6 +1031,9 @@ export function PDFMerger() {
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              <p className="rounded-lg border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-primary">
+                Fast path: upload files and press merge. Use the buttons below only if you want a different page selection.
+              </p>
               <Button
                 variant="outline"
                 onClick={() => {
@@ -1084,6 +1043,15 @@ export function PDFMerger() {
                 disabled={pdfFiles.length === 0}
               >
                 Select All Pages (All Files)
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={keepFirstPageFromEachFile}
+                className="w-full text-sm"
+                disabled={pdfFiles.length === 0}
+              >
+                Keep Only First Page From Each PDF
               </Button>
               
               <Button

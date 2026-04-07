@@ -9,50 +9,30 @@ export async function GET(
 ) {
   try {
     const fileId = params.id
-    
-    // Debug: Log file store contents
-    console.log('Download request for ID:', fileId)
-    console.log('File store size:', await fileStore.size())
-    const entries = await fileStore.entries()
-    console.log('Available files:', entries.map(([id, data]) => ({ id, name: data.name })))
-    
-    // Get file metadata
-    const fileData = await fileStore.get(fileId)
-    
-    if (!fileData) {
-      console.log('File not found in store for ID:', fileId)
+
+    const result = await fileStore.claimDownload(fileId)
+
+    if (result.status === 'missing') {
       return new NextResponse('File not found or expired', { status: 404 })
     }
-    
-    // Check if file has expired
-    const now = new Date()
-    if (fileData.expiresAt < now) {
-      // Clean up expired file
-      await fileStore.delete(fileId)
-      if (existsSync(fileData.path)) {
-        await unlink(fileData.path).catch(() => {})
+
+    if (result.status === 'expired') {
+      if (existsSync(result.file.path)) {
+        await unlink(result.file.path).catch(() => undefined)
       }
+
       return new NextResponse('File has expired', { status: 410 })
     }
-    
-    // Check download limit
-    if (fileData.downloadCount >= fileData.maxDownloads) {
+
+    if (result.status === 'limit') {
       return new NextResponse('Download limit exceeded', { status: 429 })
     }
-    
-    // Check if physical file exists
-    if (!existsSync(fileData.path)) {
-      await fileStore.delete(fileId)
-      return new NextResponse('File not found', { status: 404 })
-    }
+
+    const fileData = result.file
     
     // Read file
     const fileBuffer = await readFile(fileData.path)
-    
-    // Increment download count
-    fileData.downloadCount++
-    await fileStore.set(fileId, fileData)
-    
+
     // Determine content type
     const contentType = fileData.type || 'application/octet-stream'
     
@@ -87,6 +67,11 @@ export async function HEAD(
     const fileData = await fileStore.get(fileId)
     
     if (!fileData || fileData.expiresAt < new Date()) {
+      return new NextResponse(null, { status: 404 })
+    }
+
+    if (!existsSync(fileData.path)) {
+      await fileStore.delete(fileId)
       return new NextResponse(null, { status: 404 })
     }
     

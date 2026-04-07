@@ -3,6 +3,12 @@
 import React, { useState, useCallback, useRef } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import {
+  FILE_SHARE_EXPIRY_MS,
+  FILE_SHARE_MAX_FILE_SIZE,
+  formatBytes,
+  formatDurationShort,
+} from '@/lib/file-share-config'
 
 interface UploadedFile {
   id: string
@@ -27,18 +33,10 @@ export function FileShare() {
   const [dragActive, setDragActive] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [timeRemaining, setTimeRemaining] = useState<string>('')
+  const [copyStatus, setCopyStatus] = useState<string | null>(null)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
-
-  // Format file size
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes'
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-  }
 
   // Calculate time remaining
   const updateTimeRemaining = useCallback(() => {
@@ -61,7 +59,11 @@ export function FileShare() {
     const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60))
     const seconds = Math.floor((remaining % (1000 * 60)) / 1000)
     
-    setTimeRemaining(`${hours}h ${minutes}m ${seconds}s`)
+    setTimeRemaining(
+      hours > 0
+        ? `${hours}h ${minutes}m ${seconds}s`
+        : formatDurationShort(remaining)
+    )
   }, [uploadedFile])
 
   // Start countdown timer
@@ -78,14 +80,38 @@ export function FileShare() {
     }
   }, [uploadedFile, updateTimeRemaining])
 
+  const copyToClipboard = useCallback(async (url?: string, successMessage = 'Link copied') => {
+    const value = url || uploadedFile?.url
+
+    if (!value) return false
+
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopyStatus(successMessage)
+      return true
+    } catch (err) {
+      try {
+        const textArea = document.createElement('textarea')
+        textArea.value = value
+        document.body.appendChild(textArea)
+        textArea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textArea)
+        setCopyStatus(successMessage)
+        return true
+      } catch {
+        setCopyStatus('Link ready to copy')
+        return false
+      }
+    }
+  }, [uploadedFile])
+
   // Handle file upload
   const handleFileUpload = async (file: File) => {
     if (!file) return
     
-    // Check file size (50MB limit)
-    const maxSize = 200 * 1024 * 1024 // 50MB
-    if (file.size > maxSize) {
-      setError('File size must be less than 50MB')
+    if (file.size > FILE_SHARE_MAX_FILE_SIZE) {
+      setError(`File size must be less than ${formatBytes(FILE_SHARE_MAX_FILE_SIZE)}`)
       return
     }
     
@@ -105,10 +131,10 @@ export function FileShare() {
       
       if (result.success && result.file) {
         setUploadedFile(result.file)
-        console.log('Upload successful:', result.file)
+        setCopyStatus('Preparing link...')
+        void copyToClipboard(result.file.url, 'Link copied automatically')
       } else {
         setError(result.error || 'Upload failed')
-        console.error('Upload failed:', result)
       }
     } catch (err) {
       setError('Network error. Please try again.')
@@ -146,28 +172,11 @@ export function FileShare() {
     }
   }
 
-  // Copy link to clipboard
-  const copyToClipboard = async () => {
-    if (!uploadedFile) return
-    
-    try {
-      await navigator.clipboard.writeText(uploadedFile.url)
-      // You could add a toast notification here
-    } catch (err) {
-      // Fallback for older browsers
-      const textArea = document.createElement('textarea')
-      textArea.value = uploadedFile.url
-      document.body.appendChild(textArea)
-      textArea.select()
-      document.execCommand('copy')
-      document.body.removeChild(textArea)
-    }
-  }
-
   // Reset upload
   const resetUpload = () => {
     setUploadedFile(null)
     setError(null)
+    setCopyStatus(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -186,11 +195,15 @@ export function FileShare() {
         <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mt-3 sm:mt-4 text-xs sm:text-sm">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-primary rounded-full"></div>
-            <span className="text-muted-foreground">1 hour expiry</span>
+            <span className="text-muted-foreground">
+              {formatDurationShort(FILE_SHARE_EXPIRY_MS)} expiry
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-success rounded-full"></div>
-            <span className="text-muted-foreground">200MB max size</span>
+            <span className="text-muted-foreground">
+              {formatBytes(FILE_SHARE_MAX_FILE_SIZE)} max size
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-warning rounded-full"></div>
@@ -249,7 +262,8 @@ export function FileShare() {
                 />
 
                 <div className="text-xs text-muted-foreground text-center">
-                  Maximum file size: 50MB • Files expire after 1 hour
+                  Maximum file size: {formatBytes(FILE_SHARE_MAX_FILE_SIZE)} • Files expire after{' '}
+                  {formatDurationShort(FILE_SHARE_EXPIRY_MS)}
                 </div>
               </div>
             ) : (
@@ -259,9 +273,15 @@ export function FileShare() {
                   <div className="text-4xl mb-2">✅</div>
                   <h3 className="text-lg font-medium text-success">Upload Successful!</h3>
                   <p className="text-sm text-muted-foreground">
-                    Your file is ready to share
+                    Your file is ready to share and the link is ready to paste
                   </p>
                 </div>
+
+                {copyStatus && (
+                  <div className="rounded-lg border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-primary">
+                    {copyStatus}
+                  </div>
+                )}
                 
                 <Button
                   onClick={resetUpload}
@@ -297,7 +317,7 @@ export function FileShare() {
                     <div className="flex-1 min-w-0">
                       <h4 className="font-medium truncate">{uploadedFile.name}</h4>
                       <div className="text-sm text-muted-foreground space-y-1">
-                        <p>Size: {formatFileSize(uploadedFile.size)}</p>
+                        <p>Size: {formatBytes(uploadedFile.size)}</p>
                         <p>Type: {uploadedFile.type || 'Unknown'}</p>
                         <p>Downloads: {uploadedFile.downloadCount}/{uploadedFile.maxDownloads}</p>
                       </div>
@@ -327,7 +347,7 @@ export function FileShare() {
                       className="flex-1 px-3 py-2 text-sm border border-border rounded-md bg-muted/20 font-mono"
                     />
                     <Button
-                      onClick={copyToClipboard}
+                      onClick={() => void copyToClipboard()}
                       size="sm"
                       className="shrink-0"
                     >
@@ -366,7 +386,7 @@ export function FileShare() {
               <div className="text-2xl mb-2">📤</div>
               <h4 className="font-medium mb-1">1. Upload</h4>
               <p className="text-muted-foreground">
-                Drag & drop or select your file (max 50MB)
+                Drag & drop or select your file (max {formatBytes(FILE_SHARE_MAX_FILE_SIZE)})
               </p>
             </div>
             <div className="text-center">
@@ -380,7 +400,7 @@ export function FileShare() {
               <div className="text-2xl mb-2">⏰</div>
               <h4 className="font-medium mb-1">3. Expires</h4>
               <p className="text-muted-foreground">
-                Files automatically delete after 1 hour
+                Files automatically delete after {formatDurationShort(FILE_SHARE_EXPIRY_MS)}
               </p>
             </div>
           </div>

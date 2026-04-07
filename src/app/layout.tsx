@@ -4,15 +4,16 @@ import Link from 'next/link';
 import { ThemeProvider } from '@/lib/providers/ThemeProvider';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { Zap, Menu } from 'lucide-react';
+import { featuredTools } from '@/lib/tool-catalog';
 import './globals.css';
 
-// Initialize the application (including cron jobs)
-import '@/lib/startup';
-
 export const metadata: Metadata = {
-  title: 'UtilityHub - 50+ Essential Online Tools',
-  description: 'Free online tools for image compression, PDF processing, text editing, code debugging, and more. Fast, secure, and easy to use.',
-  keywords: 'online tools, image compressor, PDF merger, text tools, developer utilities, free tools',
+  title: 'UtilityHub - Fast PDF, Image, Text, and Developer Tools',
+  description: 'Free online tools for PDF workflows, image processing, text summarization, code debugging, and more. Fast, secure, and easy to use.',
+  keywords: 'online tools, pdf tools, image compressor, pdf merger, text summarizer, code debugger, free tools',
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({
@@ -22,7 +23,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased" suppressHydrationWarning>
         <ThemeProvider defaultTheme="system" storageKey="utility-hub-theme">
           <div className="min-h-screen bg-background">
             <header className="sticky top-0 z-50 w-full glass border-b">
@@ -80,17 +81,20 @@ export default function RootLayout({
                       <span className="font-bold text-lg">UtilityHub</span>
                     </div>
                     <p className="text-sm text-muted-foreground leading-relaxed">
-                      Free online tools for everyday tasks. Fast, secure, and easy to use. Built for developers, by developers.
+                      Fast online tools for PDF, image, text, and developer workflows. Everything is designed to help users finish practical tasks with less friction.
                     </p>
                   </div>
                   
                   <div>
                     <h3 className="font-semibold mb-4 text-foreground">Popular Tools</h3>
                     <ul className="space-y-3 text-sm">
-                      <li><Link href="/tools/image-compressor" className="text-muted-foreground hover:text-primary transition-colors">Image Compressor</Link></li>
-                      <li><Link href="/tools/pdf-merger" className="text-muted-foreground hover:text-primary transition-colors">PDF Merger</Link></li>
-                      <li><Link href="/tools/code-debugger" className="text-muted-foreground hover:text-primary transition-colors">Code Debugger</Link></li>
-                      <li><Link href="/tools/color-palette" className="text-muted-foreground hover:text-primary transition-colors">Color Palette</Link></li>
+                      {featuredTools.slice(0, 4).map((tool) => (
+                        <li key={tool.href}>
+                          <Link href={tool.href} className="text-muted-foreground hover:text-primary transition-colors">
+                            {tool.name}
+                          </Link>
+                        </li>
+                      ))}
                     </ul>
                   </div>
                   

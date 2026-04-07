@@ -7,7 +7,7 @@ A comprehensive collection of developer utilities built with Next.js, React, and
 - **Code Debugger**: Analyze JavaScript/TypeScript code for potential issues and improvements
 - **Text Summarizer**: Generate concise summaries from long text content
 - **Content Improver**: Enhance writing with grammar corrections and clarity improvements
-- **Hash Generator**: Generate MD5, SHA1, and SHA256 cryptographic hashes
+- **Hash Generator**: Generate SHA1, SHA256, SHA512, HMAC, and CRC32 hashes
 - **Color Palette Generator**: Create beautiful color schemes using color theory principles
 
 ## 🛠️ Tech Stack

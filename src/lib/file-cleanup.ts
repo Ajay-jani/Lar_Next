@@ -1,10 +1,18 @@
 import { readdir, unlink, stat } from 'fs/promises'
 import { existsSync } from 'fs'
 import path from 'path'
+import {
+  FILE_SHARE_CLEANUP_INTERVAL_MS,
+  FILE_SHARE_EXPIRY_MS,
+  FILE_SHARE_STORE_DIRNAME,
+} from './file-share-config'
 
-const UPLOAD_DIR = path.join(process.cwd(), 'temp-uploads')
-const CLEANUP_INTERVAL = 15 * 60 * 1000 // 15 minutes
-const MAX_FILE_AGE = 60 * 60 * 1000 // 1 hour
+const UPLOAD_DIR = path.join(process.cwd(), FILE_SHARE_STORE_DIRNAME)
+const MAX_FILE_AGE = FILE_SHARE_EXPIRY_MS
+
+function shouldIgnoreFile(fileName: string): boolean {
+  return fileName.startsWith('.')
+}
 
 /**
  * Clean up old files from the upload directory
@@ -20,6 +28,10 @@ export async function cleanupOldFiles(): Promise<void> {
     const now = Date.now()
 
     for (const file of files) {
+      if (shouldIgnoreFile(file)) {
+        continue
+      }
+
       const filePath = path.join(UPLOAD_DIR, file)
       
       try {
@@ -50,9 +62,11 @@ export function startFileCleanup(): void {
   cleanupOldFiles()
   
   // Set up periodic cleanup
-  setInterval(cleanupOldFiles, CLEANUP_INTERVAL)
+  setInterval(cleanupOldFiles, FILE_SHARE_CLEANUP_INTERVAL_MS)
   
-  console.log(`File cleanup started - running every ${CLEANUP_INTERVAL / 1000 / 60} minutes`)
+  console.log(
+    `File cleanup started - running every ${FILE_SHARE_CLEANUP_INTERVAL_MS / 1000 / 60} minutes`
+  )
 }
 
 /**
@@ -73,6 +87,10 @@ export async function getUploadStats(): Promise<{
     let oldestFile: Date | null = null
 
     for (const file of files) {
+      if (shouldIgnoreFile(file)) {
+        continue
+      }
+
       const filePath = path.join(UPLOAD_DIR, file)
       
       try {
@@ -88,7 +106,7 @@ export async function getUploadStats(): Promise<{
     }
 
     return {
-      totalFiles: files.length,
+      totalFiles: files.filter((file) => !shouldIgnoreFile(file)).length,
       totalSize,
       oldestFile
     }

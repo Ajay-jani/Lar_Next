@@ -1,9 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { timingSafeEqual } from 'crypto'
 import { getFileCleanupCron } from '@/lib/file-cleanup-cron'
 
+function getAuthorizationError(request: NextRequest): NextResponse | null {
+  const expectedToken = process.env.CRON_ADMIN_TOKEN?.trim()
+
+  if (!expectedToken) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'CRON_ADMIN_TOKEN is not configured on the server.',
+      },
+      { status: 503 }
+    )
+  }
+
+  const providedToken = request.headers.get('x-admin-token')?.trim()
+
+  if (!providedToken) {
+    return NextResponse.json(
+      { success: false, error: 'Missing admin token.' },
+      { status: 401 }
+    )
+  }
+
+  const matches =
+    providedToken.length === expectedToken.length &&
+    timingSafeEqual(Buffer.from(providedToken), Buffer.from(expectedToken))
+
+  if (!matches) {
+    return NextResponse.json(
+      { success: false, error: 'Invalid admin token.' },
+      { status: 401 }
+    )
+  }
+
+  return null
+}
+
 // GET - Get cron status and statistics
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const authError = getAuthorizationError(request)
+    if (authError) {
+      return authError
+    }
+
     const cron = getFileCleanupCron()
     const status = cron.getStatus()
     const stats = await cron.getStats()
@@ -26,6 +68,11 @@ export async function GET() {
 // POST - Start/stop cron or trigger manual cleanup
 export async function POST(request: NextRequest) {
   try {
+    const authError = getAuthorizationError(request)
+    if (authError) {
+      return authError
+    }
+
     const body = await request.json()
     const { action } = body
 

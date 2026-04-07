@@ -4,12 +4,14 @@ import { existsSync } from 'fs'
 import path from 'path'
 import { v4 as uuidv4 } from 'uuid'
 import { fileStore, cleanupExpiredFiles, type FileData } from '@/lib/file-store'
+import {
+  FILE_SHARE_EXPIRY_MINUTES,
+  FILE_SHARE_MAX_DOWNLOADS,
+  FILE_SHARE_MAX_FILE_SIZE,
+  FILE_SHARE_STORE_DIRNAME,
+} from '@/lib/file-share-config'
 
-// Configuration
-const UPLOAD_DIR = path.join(process.cwd(), 'temp-uploads')
-const MAX_FILE_SIZE = 200 * 1024 * 1024 // 200MB
-const EXPIRY_MINUTES = 5 // 5 minutes
-const MAX_DOWNLOADS = 10 // Maximum downloads per file
+const UPLOAD_DIR = path.join(process.cwd(), FILE_SHARE_STORE_DIRNAME)
 
 // Ensure upload directory exists
 async function ensureUploadDir() {
@@ -28,9 +30,9 @@ export async function POST(request: NextRequest) {
     
     // Parse form data
     const formData = await request.formData()
-    const file = formData.get('file') as File
+    const file = formData.get('file')
     
-    if (!file) {
+    if (!(file instanceof File)) {
       return NextResponse.json(
         { success: false, error: 'No file provided' },
         { status: 400 }
@@ -38,9 +40,9 @@ export async function POST(request: NextRequest) {
     }
     
     // Validate file size
-    if (file.size > MAX_FILE_SIZE) {
+    if (file.size > FILE_SHARE_MAX_FILE_SIZE) {
       return NextResponse.json(
-        { success: false, error: 'File size exceeds 50MB limit' },
+        { success: false, error: 'File size exceeds the allowed limit' },
         { status: 400 }
       )
     }
@@ -56,9 +58,9 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes)
     await writeFile(filePath, buffer)
     
-    // Calculate expiry time (5 minutes from now)
+    // Calculate expiry time from the shared configuration.
     const expiresAt = new Date()
-    expiresAt.setMinutes(expiresAt.getMinutes() + EXPIRY_MINUTES)
+    expiresAt.setMinutes(expiresAt.getMinutes() + FILE_SHARE_EXPIRY_MINUTES)
     
     // Store file metadata
     const fileData: FileData = {
@@ -69,24 +71,14 @@ export async function POST(request: NextRequest) {
       path: filePath,
       expiresAt,
       downloadCount: 0,
-      maxDownloads: MAX_DOWNLOADS
+      maxDownloads: FILE_SHARE_MAX_DOWNLOADS
     }
     
     await fileStore.set(fileId, fileData)
-    
-    // Debug: Log file store after setting
-    console.log('File stored with ID:', fileId)
-    console.log('File store size after upload:', await fileStore.size())
-    
-    // Generate download URL with correct port
-    const protocol = request.nextUrl.protocol
-    const host = request.headers.get('host') || request.nextUrl.host
-    const baseUrl = `${protocol}//${host}`
-    const downloadUrl = `${baseUrl}/api/file-share/download/${fileId}`
-    
-    console.log('Generated download URL:', downloadUrl)
-    console.log('Request host:', host)
-    console.log('Request origin:', request.nextUrl.origin)
+    const downloadUrl = new URL(
+      `/api/file-share/download/${fileId}`,
+      request.nextUrl.origin
+    ).toString()
     
     // Return success response
     return NextResponse.json({
@@ -99,7 +91,7 @@ export async function POST(request: NextRequest) {
         url: downloadUrl,
         expiresAt: expiresAt.toISOString(),
         downloadCount: 0,
-        maxDownloads: MAX_DOWNLOADS
+        maxDownloads: FILE_SHARE_MAX_DOWNLOADS
       }
     })
     

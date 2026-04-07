@@ -142,7 +142,7 @@ export function ImageResizer() {
         setError('Please select only image files')
         return false
       }
-      if (file.size > 200 * 1024 * 1024) { // 50MB limit
+      if (file.size > 50 * 1024 * 1024) {
         setError('Image file size must be less than 50MB')
         return false
       }

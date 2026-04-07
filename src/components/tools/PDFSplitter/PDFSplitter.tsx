@@ -49,6 +49,12 @@ export function PDFSplitter() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const splitUrlsRef = useRef<string[]>([])
 
+  const getDefaultPrefix = useCallback((fileName: string) => {
+    const nameWithoutExtension = fileName.replace(/\.pdf$/i, '')
+    const sanitized = nameWithoutExtension.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '')
+    return sanitized || 'split'
+  }, [])
+
   // Cleanup URLs on unmount
   React.useEffect(() => {
     return () => {
@@ -152,6 +158,7 @@ export function PDFSplitter() {
       
       setSplitOptions(prev => ({
         ...prev,
+        outputPrefix: getDefaultPrefix(file.name),
         customRanges: defaultRanges
       }))
     } catch (err) {
@@ -159,7 +166,7 @@ export function PDFSplitter() {
     } finally {
       setIsAnalyzing(false)
     }
-  }, [analyzePDF])
+  }, [analyzePDF, getDefaultPrefix])
 
   // Drag and drop handlers
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -172,7 +179,9 @@ export function PDFSplitter() {
   }, [])
 
   // Split PDF functionality
-  const splitPDF = useCallback(async () => {
+  const splitPDF = useCallback(async (optionsOverride?: SplitOptions) => {
+    const effectiveOptions = optionsOverride || splitOptions
+
     if (!pdfFile) {
       setError('Please select a PDF file to split')
       return
@@ -193,9 +202,9 @@ export function PDFSplitter() {
       const totalPages = sourcePdf.getPageCount()
       const results: { name: string; url: string; pages: number }[] = []
 
-      if (splitOptions.method === 'pages') {
+      if (effectiveOptions.method === 'pages') {
         // Split by pages per file
-        const pagesPerSplit = splitOptions.pagesPerSplit
+        const pagesPerSplit = effectiveOptions.pagesPerSplit
         const totalSplits = Math.ceil(totalPages / pagesPerSplit)
 
         for (let i = 0; i < totalSplits; i++) {
@@ -214,16 +223,16 @@ export function PDFSplitter() {
           
           splitUrlsRef.current.push(url)
           results.push({
-            name: `${splitOptions.outputPrefix}_${String(i + 1).padStart(3, '0')}.pdf`,
+            name: `${effectiveOptions.outputPrefix}_${String(i + 1).padStart(3, '0')}.pdf`,
             url,
             pages: endPage - startPage + 1
           })
           
           setProgress(Math.round(((i + 1) / totalSplits) * 100))
         }
-      } else if (splitOptions.method === 'ranges') {
+      } else if (effectiveOptions.method === 'ranges') {
         // Split by custom ranges
-        const selectedRanges = splitOptions.customRanges.filter(range => range.selected)
+        const selectedRanges = effectiveOptions.customRanges.filter(range => range.selected)
         
         if (selectedRanges.length === 0) {
           throw new Error('Please select at least one range to split')
@@ -247,16 +256,16 @@ export function PDFSplitter() {
           
           splitUrlsRef.current.push(url)
           results.push({
-            name: `${splitOptions.outputPrefix}_${range.name.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+            name: `${effectiveOptions.outputPrefix}_${range.name.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
             url,
             pages: range.endPage - range.startPage + 1
           })
           
           setProgress(Math.round(((i + 1) / selectedRanges.length) * 100))
         }
-      } else if (splitOptions.method === 'size') {
+      } else if (effectiveOptions.method === 'size') {
         // Split by file size (approximate)
-        const targetSizeBytes = splitOptions.maxSizeKB * 1024
+        const targetSizeBytes = effectiveOptions.maxSizeKB * 1024
         const avgBytesPerPage = pdfFile.size / totalPages
         const estimatedPagesPerSplit = Math.max(1, Math.floor(targetSizeBytes / avgBytesPerPage))
         
@@ -278,7 +287,7 @@ export function PDFSplitter() {
           
           splitUrlsRef.current.push(url)
           results.push({
-            name: `${splitOptions.outputPrefix}_${String(splitIndex + 1).padStart(3, '0')}.pdf`,
+            name: `${effectiveOptions.outputPrefix}_${String(splitIndex + 1).padStart(3, '0')}.pdf`,
             url,
             pages: endPage - currentPage + 1
           })
@@ -298,6 +307,16 @@ export function PDFSplitter() {
       setIsSplitting(false)
     }
   }, [pdfFile, splitOptions])
+
+  const runQuickSplit = useCallback(async (updates: Partial<SplitOptions>) => {
+    const nextOptions: SplitOptions = {
+      ...splitOptions,
+      ...updates,
+    }
+
+    setSplitOptions(nextOptions)
+    await splitPDF(nextOptions)
+  }, [splitOptions, splitPDF])
 
   // Add/remove custom range
   const addCustomRange = useCallback(() => {
@@ -339,7 +358,7 @@ export function PDFSplitter() {
       <div className="text-center mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-2 sm:mb-4">Advanced PDF Splitter</h1>
         <p className="text-muted-foreground text-sm sm:text-base lg:text-lg px-2">
-          Split PDF files by pages, ranges, or file size with professional precision
+          Upload once, choose a quick split preset, and only open advanced settings when you need extra control
         </p>
         <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mt-3 sm:mt-4 text-xs sm:text-sm">
           <div className="flex items-center gap-2">
@@ -458,151 +477,149 @@ export function PDFSplitter() {
         <div className="xl:col-span-1 space-y-4 sm:space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Split Options</CardTitle>
+              <CardTitle>Quick Split</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Split Method
-                </label>
-                <select
-                  value={splitOptions.method}
-                  onChange={(e) => setSplitOptions(prev => ({ 
-                    ...prev, 
-                    method: e.target.value as SplitOptions['method']
-                  }))}
-                  className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                >
-                  <option value="pages">Split by Pages</option>
-                  <option value="ranges">Split by Custom Ranges</option>
-                  <option value="size">Split by File Size</option>
-                </select>
-              </div>
-
-              {splitOptions.method === 'pages' && (
-                <div>
-                  <label htmlFor="pages-per-split" className="block text-sm font-medium text-foreground mb-2">
-                    Pages per Split
-                  </label>
-                  <Input
-                    id="pages-per-split"
-                    type="number"
-                    min={1}
-                    max={pdfFile?.pageCount || 1}
-                    value={splitOptions.pagesPerSplit}
-                    onChange={(e) => setSplitOptions(prev => ({ 
-                      ...prev, 
-                      pagesPerSplit: parseInt(e.target.value) || 1 
-                    }))}
-                    className="text-sm"
-                  />
-                </div>
-              )}
-
-              {splitOptions.method === 'size' && (
-                <div>
-                  <label htmlFor="max-size" className="block text-sm font-medium text-foreground mb-2">
-                    Max Size per File (KB)
-                  </label>
-                  <Input
-                    id="max-size"
-                    type="number"
-                    min={100}
-                    value={splitOptions.maxSizeKB}
-                    onChange={(e) => setSplitOptions(prev => ({ 
-                      ...prev, 
-                      maxSizeKB: parseInt(e.target.value) || 1024 
-                    }))}
-                    className="text-sm"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label htmlFor="output-prefix" className="block text-sm font-medium text-foreground mb-2">
-                  Output File Prefix
-                </label>
-                <Input
-                  id="output-prefix"
-                  type="text"
-                  value={splitOptions.outputPrefix}
-                  onChange={(e) => setSplitOptions(prev => ({ 
-                    ...prev, 
-                    outputPrefix: e.target.value 
-                  }))}
-                  placeholder="split"
-                  className="text-sm"
-                />
-              </div>
-
-              {/* Quick Presets */}
               {pdfFile && (
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-foreground">
-                    Quick Presets
-                  </label>
+                <div className="space-y-3">
+                  <p className="rounded-lg border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-primary">
+                    Good to go: your file is ready to split immediately. The fastest option is
+                    one file per page.
+                  </p>
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       size="sm"
-                      variant="outline"
-                      onClick={() => setSplitOptions(prev => ({ 
-                        ...prev, 
-                        method: 'pages', 
-                        pagesPerSplit: 1 
-                      }))}
-                      className="text-xs h-8"
+                      onClick={() => void runQuickSplit({ method: 'pages', pagesPerSplit: 1 })}
+                      className="text-xs h-9"
                     >
-                      📄 Single Pages
+                      Split Every Page
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => setSplitOptions(prev => ({ 
-                        ...prev, 
+                      onClick={() => void runQuickSplit({ 
                         method: 'pages', 
                         pagesPerSplit: Math.ceil((pdfFile.pageCount || 1) / 2)
-                      }))}
-                      className="text-xs h-8"
+                      })}
+                      className="text-xs h-9"
                     >
-                      📄 Two Parts
+                      Split In Two
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => setSplitOptions(prev => ({ 
-                        ...prev, 
-                        method: 'pages', 
-                        pagesPerSplit: 5 
-                      }))}
-                      className="text-xs h-8"
+                      onClick={() => void runQuickSplit({ method: 'pages', pagesPerSplit: 5 })}
+                      className="text-xs h-9"
                     >
-                      📄 5 Pages Each
+                      5 Pages Each
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => setSplitOptions(prev => ({ 
-                        ...prev, 
-                        method: 'size', 
-                        maxSizeKB: 1024 
-                      }))}
-                      className="text-xs h-8"
+                      onClick={() => void runQuickSplit({ method: 'size', maxSizeKB: 1024 })}
+                      className="text-xs h-9"
                     >
-                      📄 1MB Max
+                      1MB Chunks
                     </Button>
                   </div>
                 </div>
               )}
 
-              {/* Split Button */}
               <Button
-                onClick={splitPDF}
+                onClick={() => void splitPDF()}
                 disabled={isSplitting || !pdfFile}
                 className="w-full"
                 size="lg"
               >
-                {isSplitting ? 'Splitting PDF...' : 'Split PDF'}
+                {isSplitting
+                  ? 'Splitting PDF...'
+                  : splitOptions.method === 'pages'
+                    ? `Split ${splitOptions.pagesPerSplit} Page${splitOptions.pagesPerSplit !== 1 ? 's' : ''} Per File`
+                    : splitOptions.method === 'size'
+                      ? `Split Into ${splitOptions.maxSizeKB}KB Files`
+                      : 'Split Using Custom Ranges'}
               </Button>
+
+              <details className="rounded-lg border border-border bg-muted/20">
+                <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-foreground">
+                  Advanced controls
+                </summary>
+                <div className="space-y-4 px-4 pb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Split Method
+                    </label>
+                    <select
+                      value={splitOptions.method}
+                      onChange={(e) => setSplitOptions(prev => ({ 
+                        ...prev, 
+                        method: e.target.value as SplitOptions['method']
+                      }))}
+                      className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                    >
+                      <option value="pages">Split by Pages</option>
+                      <option value="ranges">Split by Custom Ranges</option>
+                      <option value="size">Split by File Size</option>
+                    </select>
+                  </div>
+
+                  {splitOptions.method === 'pages' && (
+                    <div>
+                      <label htmlFor="pages-per-split" className="block text-sm font-medium text-foreground mb-2">
+                        Pages per Split
+                      </label>
+                      <Input
+                        id="pages-per-split"
+                        type="number"
+                        min={1}
+                        max={pdfFile?.pageCount || 1}
+                        value={splitOptions.pagesPerSplit}
+                        onChange={(e) => setSplitOptions(prev => ({ 
+                          ...prev, 
+                          pagesPerSplit: parseInt(e.target.value) || 1 
+                        }))}
+                        className="text-sm"
+                      />
+                    </div>
+                  )}
+
+                  {splitOptions.method === 'size' && (
+                    <div>
+                      <label htmlFor="max-size" className="block text-sm font-medium text-foreground mb-2">
+                        Max Size per File (KB)
+                      </label>
+                      <Input
+                        id="max-size"
+                        type="number"
+                        min={100}
+                        value={splitOptions.maxSizeKB}
+                        onChange={(e) => setSplitOptions(prev => ({ 
+                          ...prev, 
+                          maxSizeKB: parseInt(e.target.value) || 1024 
+                        }))}
+                        className="text-sm"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label htmlFor="output-prefix" className="block text-sm font-medium text-foreground mb-2">
+                      Output File Prefix
+                    </label>
+                    <Input
+                      id="output-prefix"
+                      type="text"
+                      value={splitOptions.outputPrefix}
+                      onChange={(e) => setSplitOptions(prev => ({ 
+                        ...prev, 
+                        outputPrefix: e.target.value 
+                      }))}
+                      placeholder="split"
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+              </details>
             </CardContent>
           </Card>
 

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback, useEffect, useRef } from 'react'
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -50,6 +50,27 @@ interface ProcessedImage {
   size: number
 }
 
+const DEFAULT_FILTERS: FilterSettings = {
+  brightness: 100,
+  contrast: 100,
+  saturation: 100,
+  hue: 0,
+  blur: 0,
+  sepia: 0,
+  grayscale: 0,
+  invert: 0,
+  opacity: 100,
+  gamma: 100,
+  exposure: 0,
+  temperature: 0,
+  tint: 0,
+  vibrance: 0,
+  highlights: 0,
+  shadows: 0,
+  clarity: 0,
+  vignette: 0
+}
+
 const SUPPORTED_FORMATS = {
   jpeg: { name: 'JPEG', extension: 'jpg', quality: true },
   png: { name: 'PNG', extension: 'png', quality: false },
@@ -93,26 +114,7 @@ const FILTER_PRESETS = {
 export function ImageConverter() {
   const [images, setImages] = useState<ImageFile[]>([])
   const [selectedImage, setSelectedImage] = useState<ImageFile | null>(null)
-  const [filters, setFilters] = useState<FilterSettings>({
-    brightness: 100,
-    contrast: 100,
-    saturation: 100,
-    hue: 0,
-    blur: 0,
-    sepia: 0,
-    grayscale: 0,
-    invert: 0,
-    opacity: 100,
-    gamma: 100,
-    exposure: 0,
-    temperature: 0,
-    tint: 0,
-    vibrance: 0,
-    highlights: 0,
-    shadows: 0,
-    clarity: 0,
-    vignette: 0
-  })
+  const [filters, setFilters] = useState<FilterSettings>(DEFAULT_FILTERS)
   const [conversion, setConversion] = useState<ConversionSettings>({
     format: 'jpeg',
     quality: 90,
@@ -129,6 +131,11 @@ export function ImageConverter() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const processedUrlsRef = useRef<Set<string>>(new Set())
 
+  const clearProcessedResults = useCallback(() => {
+    processedUrlsRef.current.forEach(url => URL.revokeObjectURL(url))
+    processedUrlsRef.current.clear()
+  }, [])
+
   // Cleanup URLs on unmount
   useEffect(() => {
     const currentProcessedUrls = processedUrlsRef.current
@@ -143,46 +150,6 @@ export function ImageConverter() {
       })
     }
   }, [images])
-
-  // File handling
-  const handleFileSelect = useCallback((files: FileList | null) => {
-    if (!files) return
-
-    const validFiles = Array.from(files).filter(file => {
-      if (!file.type.startsWith('image/')) {
-        setError('Please select only image files')
-        return false
-      }
-      if (file.size > 200 * 1024 * 1024) { // 50MB limit
-        setError('File size must be less than 50MB')
-        return false
-      }
-      return true
-    })
-
-    if (validFiles.length === 0) return
-
-    setError(null)
-    const newImages: ImageFile[] = validFiles.map(file => ({
-      file,
-      preview: URL.createObjectURL(file),
-      id: `img-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    }))
-
-    setImages(prev => [...prev, ...newImages])
-    if (!selectedImage && newImages.length > 0) {
-      setSelectedImage(newImages[0])
-    }
-  }, [selectedImage])
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    handleFileSelect(e.dataTransfer.files)
-  }, [handleFileSelect])
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-  }, [])
 
   // Filter application
   const applyFiltersToCanvas = useCallback((
@@ -324,7 +291,16 @@ export function ImageConverter() {
   }, [])
 
   // Process single image
-  const processImage = useCallback(async (imageFile: ImageFile): Promise<ProcessedImage> => {
+  const processImage = useCallback(async (
+    imageFile: ImageFile,
+    options?: {
+      activeFilters?: FilterSettings
+      activeConversion?: ConversionSettings
+    }
+  ): Promise<ProcessedImage> => {
+    const activeFilters = options?.activeFilters || filters
+    const activeConversion = options?.activeConversion || conversion
+
     return new Promise((resolve, reject) => {
       const img = new Image()
       img.crossOrigin = 'anonymous'
@@ -341,26 +317,26 @@ export function ImageConverter() {
           // Calculate dimensions
           let { width, height } = img
           
-          if (conversion.width || conversion.height) {
-            if (conversion.maintainAspectRatio) {
+          if (activeConversion.width || activeConversion.height) {
+            if (activeConversion.maintainAspectRatio) {
               const aspectRatio = width / height
-              if (conversion.width && conversion.height) {
+              if (activeConversion.width && activeConversion.height) {
                 // Use the dimension that results in smaller image
-                const widthRatio = conversion.width / width
-                const heightRatio = conversion.height / height
+                const widthRatio = activeConversion.width / width
+                const heightRatio = activeConversion.height / height
                 const ratio = Math.min(widthRatio, heightRatio)
                 width = width * ratio
                 height = height * ratio
-              } else if (conversion.width) {
-                height = conversion.width / aspectRatio
-                width = conversion.width
-              } else if (conversion.height) {
-                width = conversion.height * aspectRatio
-                height = conversion.height
+              } else if (activeConversion.width) {
+                height = activeConversion.width / aspectRatio
+                width = activeConversion.width
+              } else if (activeConversion.height) {
+                width = activeConversion.height * aspectRatio
+                height = activeConversion.height
               }
             } else {
-              width = conversion.width || width
-              height = conversion.height || height
+              width = activeConversion.width || width
+              height = activeConversion.height || height
             }
           }
 
@@ -368,8 +344,8 @@ export function ImageConverter() {
           canvas.height = height
 
           // Fill background for formats that don't support transparency
-          if (conversion.format === 'jpeg' || conversion.format === 'bmp') {
-            ctx.fillStyle = conversion.backgroundColor
+          if (activeConversion.format === 'jpeg' || activeConversion.format === 'bmp') {
+            ctx.fillStyle = activeConversion.backgroundColor
             ctx.fillRect(0, 0, width, height)
           }
 
@@ -377,11 +353,11 @@ export function ImageConverter() {
           ctx.drawImage(img, 0, 0, width, height)
 
           // Apply filters
-          applyFiltersToCanvas(ctx, canvas, filters)
+          applyFiltersToCanvas(ctx, canvas, activeFilters)
 
           // Convert to desired format
-          const quality = SUPPORTED_FORMATS[conversion.format].quality ? 
-            conversion.quality / 100 : undefined
+          const quality = SUPPORTED_FORMATS[activeConversion.format].quality ? 
+            activeConversion.quality / 100 : undefined
 
           canvas.toBlob((blob) => {
             if (!blob) {
@@ -389,23 +365,23 @@ export function ImageConverter() {
               return
             }
 
-            const processedDataUrl = canvas.toDataURL(`image/${conversion.format}`, quality)
+            const processedDataUrl = canvas.toDataURL(`image/${activeConversion.format}`, quality)
             const downloadUrl = URL.createObjectURL(blob)
             processedUrlsRef.current.add(downloadUrl)
 
             const originalName = imageFile.file.name
             const nameWithoutExt = originalName.replace(/\.[^/.]+$/, '')
-            const newExtension = SUPPORTED_FORMATS[conversion.format].extension
+            const newExtension = SUPPORTED_FORMATS[activeConversion.format].extension
 
             resolve({
               id: imageFile.id,
               originalName: `${nameWithoutExt}.${newExtension}`,
               processedDataUrl,
               downloadUrl,
-              format: conversion.format,
+              format: activeConversion.format,
               size: blob.size
             })
-          }, `image/${conversion.format}`, quality)
+          }, `image/${activeConversion.format}`, quality)
 
         } catch (error) {
           reject(error)
@@ -417,21 +393,27 @@ export function ImageConverter() {
     })
   }, [filters, conversion, applyFiltersToCanvas])
 
-  // Process all images
-  const processAllImages = useCallback(async () => {
-    if (images.length === 0) {
-      setError('Please select images to process')
+  const processImages = useCallback(async (
+    sourceImages: ImageFile[],
+    options?: {
+      activeFilters?: FilterSettings
+      activeConversion?: ConversionSettings
+    }
+  ) => {
+    if (sourceImages.length === 0) {
+      setProcessedImages([])
       return
     }
 
     setIsProcessing(true)
     setError(null)
+    clearProcessedResults()
 
     try {
       const processed: ProcessedImage[] = []
-      
-      for (const image of images) {
-        const result = await processImage(image)
+
+      for (const image of sourceImages) {
+        const result = await processImage(image, options)
         processed.push(result)
       }
 
@@ -442,7 +424,67 @@ export function ImageConverter() {
     } finally {
       setIsProcessing(false)
     }
-  }, [images, processImage])
+  }, [clearProcessedResults, processImage])
+
+  const handleFileSelect = useCallback((files: FileList | null) => {
+    if (!files) return
+
+    const validFiles = Array.from(files).filter(file => {
+      if (!file.type.startsWith('image/')) {
+        setError('Please select only image files')
+        return false
+      }
+      if (file.size > 50 * 1024 * 1024) {
+        setError('File size must be less than 50MB')
+        return false
+      }
+      return true
+    })
+
+    if (validFiles.length === 0) return
+
+    setError(null)
+    const newImages: ImageFile[] = validFiles.map(file => ({
+      file,
+      preview: URL.createObjectURL(file),
+      id: `img-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    }))
+
+    const nextImages = [...images, ...newImages]
+    setImages(nextImages)
+    if (!selectedImage && newImages.length > 0) {
+      setSelectedImage(newImages[0])
+    }
+    setPreviewMode('processed')
+    void processImages(nextImages)
+  }, [images, processImages, selectedImage])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    handleFileSelect(e.dataTransfer.files)
+  }, [handleFileSelect])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+  }, [])
+
+  const selectedProcessedImage = useMemo(() => {
+    if (!selectedImage) {
+      return null
+    }
+
+    return processedImages.find(image => image.id === selectedImage.id) || null
+  }, [processedImages, selectedImage])
+
+  // Process all images
+  const processAllImages = useCallback(async () => {
+    if (images.length === 0) {
+      setError('Please select images to process')
+      return
+    }
+
+    await processImages(images)
+  }, [images, processImages])
 
   // Filter presets
   const applyPreset = useCallback((presetKey: keyof typeof FILTER_PRESETS) => {
@@ -454,33 +496,22 @@ export function ImageConverter() {
           (newFilters as any)[key] = value
         }
       })
+      if (images.length > 0) {
+        setPreviewMode('processed')
+        void processImages(images, { activeFilters: newFilters })
+      }
       return newFilters
     })
-  }, [])
+  }, [images, processImages])
 
   // Reset filters
   const resetFilters = useCallback(() => {
-    setFilters({
-      brightness: 100,
-      contrast: 100,
-      saturation: 100,
-      hue: 0,
-      blur: 0,
-      sepia: 0,
-      grayscale: 0,
-      invert: 0,
-      opacity: 100,
-      gamma: 100,
-      exposure: 0,
-      temperature: 0,
-      tint: 0,
-      vibrance: 0,
-      highlights: 0,
-      shadows: 0,
-      clarity: 0,
-      vignette: 0
-    })
-  }, [])
+    setFilters(DEFAULT_FILTERS)
+    if (images.length > 0) {
+      setPreviewMode('processed')
+      void processImages(images, { activeFilters: DEFAULT_FILTERS })
+    }
+  }, [images, processImages])
 
   // Update filter value
   const updateFilter = useCallback((key: keyof FilterSettings, value: number) => {
@@ -491,6 +522,15 @@ export function ImageConverter() {
   const updateConversion = useCallback((key: keyof ConversionSettings, value: any) => {
     setConversion(prev => ({ ...prev, [key]: value }))
   }, [])
+
+  const runQuickConvert = useCallback(async (format: ConversionSettings['format']) => {
+    const nextConversion = { ...conversion, format }
+    setConversion(nextConversion)
+    setPreviewMode('processed')
+    if (images.length > 0) {
+      await processImages(images, { activeConversion: nextConversion })
+    }
+  }, [conversion, images, processImages])
 
   // Remove image
   const removeImage = useCallback((id: string) => {
@@ -504,6 +544,14 @@ export function ImageConverter() {
         setSelectedImage(updated[0] || null)
       }
       return updated
+    })
+    setProcessedImages(prev => {
+      const removedImage = prev.find(img => img.id === id)
+      if (removedImage) {
+        URL.revokeObjectURL(removedImage.downloadUrl)
+        processedUrlsRef.current.delete(removedImage.downloadUrl)
+      }
+      return prev.filter(img => img.id !== id)
     })
   }, [selectedImage])
 
@@ -636,104 +684,129 @@ export function ImageConverter() {
           {/* Format Settings */}
           <Card>
             <CardHeader>
-              <CardTitle>Output Format</CardTitle>
+              <CardTitle>Quick Convert</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <label htmlFor="format-select" className="block text-sm font-medium text-foreground mb-2">
-                  Format
-                </label>
-                <select
-                  id="format-select"
-                  value={conversion.format}
-                  onChange={(e) => updateConversion('format', e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  {Object.entries(SUPPORTED_FORMATS).map(([key, format]) => (
-                    <option key={key} value={key}>{format.name}</option>
-                  ))}
-                </select>
+              <p className="rounded-lg border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-primary">
+                Uploading images now creates a default converted result automatically. Use these
+                quick buttons if you want a different format right away.
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {(['jpeg', 'png', 'webp'] as const).map((format) => (
+                  <Button
+                    key={format}
+                    variant={conversion.format === format ? 'primary' : 'outline'}
+                    size="sm"
+                    onClick={() => void runQuickConvert(format)}
+                    className="text-xs"
+                  >
+                    {SUPPORTED_FORMATS[format].name}
+                  </Button>
+                ))}
               </div>
 
-              {SUPPORTED_FORMATS[conversion.format].quality && (
-                <div>
-                  <label htmlFor="quality-slider" className="block text-sm font-medium text-foreground mb-2">
-                    Quality: {conversion.quality}%
-                  </label>
-                  <Input
-                    id="quality-slider"
-                    type="range"
-                    min="10"
-                    max="100"
-                    value={conversion.quality}
-                    onChange={(e) => updateConversion('quality', parseInt(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label htmlFor="width-input" className="block text-sm font-medium text-foreground mb-2">
-                    Width (px)
-                  </label>
-                  <Input
-                    id="width-input"
-                    type="number"
-                    placeholder="Auto"
-                    value={conversion.width || ''}
-                    onChange={(e) => updateConversion('width', e.target.value ? parseInt(e.target.value) : undefined)}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="height-input" className="block text-sm font-medium text-foreground mb-2">
-                    Height (px)
-                  </label>
-                  <Input
-                    id="height-input"
-                    type="number"
-                    placeholder="Auto"
-                    value={conversion.height || ''}
-                    onChange={(e) => updateConversion('height', e.target.value ? parseInt(e.target.value) : undefined)}
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  id="aspect-ratio"
-                  type="checkbox"
-                  checked={conversion.maintainAspectRatio}
-                  onChange={(e) => updateConversion('maintainAspectRatio', e.target.checked)}
-                  className="rounded border-border"
-                />
-                <label htmlFor="aspect-ratio" className="text-sm text-foreground">
-                  Maintain aspect ratio
-                </label>
-              </div>
-
-              {(conversion.format === 'jpeg' || conversion.format === 'bmp') && (
-                <div>
-                  <label htmlFor="bg-color" className="block text-sm font-medium text-foreground mb-2">
-                    Background Color
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      id="bg-color"
-                      type="color"
-                      value={conversion.backgroundColor}
-                      onChange={(e) => updateConversion('backgroundColor', e.target.value)}
-                      className="w-12 h-10 border border-border rounded cursor-pointer"
-                    />
-                    <Input
-                      type="text"
-                      value={conversion.backgroundColor}
-                      onChange={(e) => updateConversion('backgroundColor', e.target.value)}
-                      className="flex-1"
-                    />
+              <details className="rounded-lg border border-border bg-muted/20">
+                <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-foreground">
+                  Advanced output settings
+                </summary>
+                <div className="space-y-4 px-4 pb-4">
+                  <div>
+                    <label htmlFor="format-select" className="block text-sm font-medium text-foreground mb-2">
+                      Format
+                    </label>
+                    <select
+                      id="format-select"
+                      value={conversion.format}
+                      onChange={(e) => updateConversion('format', e.target.value)}
+                      className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      {Object.entries(SUPPORTED_FORMATS).map(([key, format]) => (
+                        <option key={key} value={key}>{format.name}</option>
+                      ))}
+                    </select>
                   </div>
+
+                  {SUPPORTED_FORMATS[conversion.format].quality && (
+                    <div>
+                      <label htmlFor="quality-slider" className="block text-sm font-medium text-foreground mb-2">
+                        Quality: {conversion.quality}%
+                      </label>
+                      <Input
+                        id="quality-slider"
+                        type="range"
+                        min="10"
+                        max="100"
+                        value={conversion.quality}
+                        onChange={(e) => updateConversion('quality', parseInt(e.target.value))}
+                        className="w-full"
+                      />
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label htmlFor="width-input" className="block text-sm font-medium text-foreground mb-2">
+                        Width (px)
+                      </label>
+                      <Input
+                        id="width-input"
+                        type="number"
+                        placeholder="Auto"
+                        value={conversion.width || ''}
+                        onChange={(e) => updateConversion('width', e.target.value ? parseInt(e.target.value) : undefined)}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="height-input" className="block text-sm font-medium text-foreground mb-2">
+                        Height (px)
+                      </label>
+                      <Input
+                        id="height-input"
+                        type="number"
+                        placeholder="Auto"
+                        value={conversion.height || ''}
+                        onChange={(e) => updateConversion('height', e.target.value ? parseInt(e.target.value) : undefined)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="aspect-ratio"
+                      type="checkbox"
+                      checked={conversion.maintainAspectRatio}
+                      onChange={(e) => updateConversion('maintainAspectRatio', e.target.checked)}
+                      className="rounded border-border"
+                    />
+                    <label htmlFor="aspect-ratio" className="text-sm text-foreground">
+                      Maintain aspect ratio
+                    </label>
+                  </div>
+
+                  {(conversion.format === 'jpeg' || conversion.format === 'bmp') && (
+                    <div>
+                      <label htmlFor="bg-color" className="block text-sm font-medium text-foreground mb-2">
+                        Background Color
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          id="bg-color"
+                          type="color"
+                          value={conversion.backgroundColor}
+                          onChange={(e) => updateConversion('backgroundColor', e.target.value)}
+                          className="w-12 h-10 border border-border rounded cursor-pointer"
+                        />
+                        <Input
+                          type="text"
+                          value={conversion.backgroundColor}
+                          onChange={(e) => updateConversion('backgroundColor', e.target.value)}
+                          className="flex-1"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </details>
             </CardContent>
           </Card>
         </div>
@@ -783,10 +856,10 @@ export function ImageConverter() {
                       <div className="relative">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={selectedImage.preview}
-                          alt="Filtered preview"
+                          src={selectedProcessedImage?.processedDataUrl || selectedImage.preview}
+                          alt="Processed preview"
                           className="max-w-full max-h-80 object-contain rounded-lg shadow-lg"
-                          style={{
+                          style={selectedProcessedImage ? undefined : {
                             filter: `brightness(${filters.brightness}%) contrast(${filters.contrast}%) saturate(${filters.saturation}%) hue-rotate(${filters.hue}deg) blur(${filters.blur}px) sepia(${filters.sepia}%) grayscale(${filters.grayscale}%) invert(${filters.invert}%) opacity(${filters.opacity}%)`
                           }}
                         />
@@ -812,29 +885,6 @@ export function ImageConverter() {
               )}
             </CardContent>
           </Card>
-
-          {/* Process Button */}
-          <div className="flex gap-4">
-            <Button
-              onClick={processAllImages}
-              disabled={isProcessing || images.length === 0}
-              className="flex-1"
-              size="lg"
-            >
-              {isProcessing ? 'Processing...' : `Process ${images.length} Image${images.length !== 1 ? 's' : ''}`}
-            </Button>
-            
-            {processedImages.length > 0 && (
-              <Button
-                onClick={downloadAll}
-                variant="outline"
-                size="lg"
-              >
-                Download All
-              </Button>
-            )}
-          </div>
-
           {/* Results */}
           {processedImages.length > 0 && (
             <Card>
@@ -908,100 +958,130 @@ export function ImageConverter() {
             </CardContent>
           </Card>
 
-          {/* Basic Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Basic Adjustments</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {[
-                { key: 'brightness', label: 'Brightness', min: 0, max: 200, unit: '%' },
-                { key: 'contrast', label: 'Contrast', min: 0, max: 200, unit: '%' },
-                { key: 'saturation', label: 'Saturation', min: 0, max: 200, unit: '%' },
-                { key: 'hue', label: 'Hue', min: -180, max: 180, unit: '°' },
-                { key: 'opacity', label: 'Opacity', min: 0, max: 100, unit: '%' }
-              ].map(({ key, label, min, max, unit }) => (
-                <div key={key}>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    {label}: {filters[key as keyof FilterSettings]}{unit}
-                  </label>
-                  <Input
-                    type="range"
-                    min={min}
-                    max={max}
-                    value={filters[key as keyof FilterSettings]}
-                    onChange={(e) => updateFilter(key as keyof FilterSettings, parseInt(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+          <details className="rounded-xl border border-border bg-muted/20">
+            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-foreground">
+              Fine-tune filters and adjustments
+            </summary>
+            <div className="space-y-5 px-4 pb-4">
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-foreground">Basic Adjustments</h3>
+                {[
+                  { key: 'brightness', label: 'Brightness', min: 0, max: 200, unit: '%' },
+                  { key: 'contrast', label: 'Contrast', min: 0, max: 200, unit: '%' },
+                  { key: 'saturation', label: 'Saturation', min: 0, max: 200, unit: '%' },
+                  { key: 'hue', label: 'Hue', min: -180, max: 180, unit: '°' },
+                  { key: 'opacity', label: 'Opacity', min: 0, max: 100, unit: '%' }
+                ].map(({ key, label, min, max, unit }) => (
+                  <div key={key}>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      {label}: {filters[key as keyof FilterSettings]}{unit}
+                    </label>
+                    <Input
+                      type="range"
+                      min={min}
+                      max={max}
+                      value={filters[key as keyof FilterSettings]}
+                      onChange={(e) => updateFilter(key as keyof FilterSettings, parseInt(e.target.value))}
+                      className="w-full"
+                    />
+                  </div>
+                ))}
+              </div>
 
-          {/* Effects */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Effects</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {[
-                { key: 'blur', label: 'Blur', min: 0, max: 10, unit: 'px' },
-                { key: 'sepia', label: 'Sepia', min: 0, max: 100, unit: '%' },
-                { key: 'grayscale', label: 'Grayscale', min: 0, max: 100, unit: '%' },
-                { key: 'invert', label: 'Invert', min: 0, max: 100, unit: '%' },
-                { key: 'vignette', label: 'Vignette', min: 0, max: 100, unit: '%' }
-              ].map(({ key, label, min, max, unit }) => (
-                <div key={key}>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    {label}: {filters[key as keyof FilterSettings]}{unit}
-                  </label>
-                  <Input
-                    type="range"
-                    min={min}
-                    max={max}
-                    value={filters[key as keyof FilterSettings]}
-                    onChange={(e) => updateFilter(key as keyof FilterSettings, parseInt(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-foreground">Effects</h3>
+                {[
+                  { key: 'blur', label: 'Blur', min: 0, max: 10, unit: 'px' },
+                  { key: 'sepia', label: 'Sepia', min: 0, max: 100, unit: '%' },
+                  { key: 'grayscale', label: 'Grayscale', min: 0, max: 100, unit: '%' },
+                  { key: 'invert', label: 'Invert', min: 0, max: 100, unit: '%' },
+                  { key: 'vignette', label: 'Vignette', min: 0, max: 100, unit: '%' }
+                ].map(({ key, label, min, max, unit }) => (
+                  <div key={key}>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      {label}: {filters[key as keyof FilterSettings]}{unit}
+                    </label>
+                    <Input
+                      type="range"
+                      min={min}
+                      max={max}
+                      value={filters[key as keyof FilterSettings]}
+                      onChange={(e) => updateFilter(key as keyof FilterSettings, parseInt(e.target.value))}
+                      className="w-full"
+                    />
+                  </div>
+                ))}
+              </div>
 
-          {/* Advanced Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Advanced</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {[
-                { key: 'gamma', label: 'Gamma', min: 50, max: 200, unit: '%' },
-                { key: 'exposure', label: 'Exposure', min: -100, max: 100, unit: '%' },
-                { key: 'temperature', label: 'Temperature', min: -100, max: 100, unit: '' },
-                { key: 'tint', label: 'Tint', min: -100, max: 100, unit: '' },
-                { key: 'vibrance', label: 'Vibrance', min: -100, max: 100, unit: '%' },
-                { key: 'highlights', label: 'Highlights', min: -100, max: 100, unit: '%' },
-                { key: 'shadows', label: 'Shadows', min: -100, max: 100, unit: '%' },
-                { key: 'clarity', label: 'Clarity', min: -100, max: 100, unit: '%' }
-              ].map(({ key, label, min, max, unit }) => (
-                <div key={key}>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    {label}: {filters[key as keyof FilterSettings]}{unit}
-                  </label>
-                  <Input
-                    type="range"
-                    min={min}
-                    max={max}
-                    value={filters[key as keyof FilterSettings]}
-                    onChange={(e) => updateFilter(key as keyof FilterSettings, parseInt(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-foreground">Advanced</h3>
+                {[
+                  { key: 'gamma', label: 'Gamma', min: 50, max: 200, unit: '%' },
+                  { key: 'exposure', label: 'Exposure', min: -100, max: 100, unit: '%' },
+                  { key: 'temperature', label: 'Temperature', min: -100, max: 100, unit: '' },
+                  { key: 'tint', label: 'Tint', min: -100, max: 100, unit: '' },
+                  { key: 'vibrance', label: 'Vibrance', min: -100, max: 100, unit: '%' },
+                  { key: 'highlights', label: 'Highlights', min: -100, max: 100, unit: '%' },
+                  { key: 'shadows', label: 'Shadows', min: -100, max: 100, unit: '%' },
+                  { key: 'clarity', label: 'Clarity', min: -100, max: 100, unit: '%' }
+                ].map(({ key, label, min, max, unit }) => (
+                  <div key={key}>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      {label}: {filters[key as keyof FilterSettings]}{unit}
+                    </label>
+                    <Input
+                      type="range"
+                      min={min}
+                      max={max}
+                      value={filters[key as keyof FilterSettings]}
+                      onChange={(e) => updateFilter(key as keyof FilterSettings, parseInt(e.target.value))}
+                      className="w-full"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </details>
         </div>
       </div>
+
+      {images.length > 0 && (
+        <div className="sticky bottom-4 z-20 mt-6">
+          <div className="rounded-2xl border border-border bg-background/95 p-4 shadow-lg backdrop-blur">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  {processedImages.length > 0
+                    ? `${processedImages.length} image result${processedImages.length !== 1 ? 's' : ''} ready`
+                    : 'Ready to refresh your converted images'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Default conversion runs automatically. Use this bar when you want to refresh or download.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  onClick={processAllImages}
+                  disabled={isProcessing || images.length === 0}
+                  className="sm:min-w-[180px]"
+                  size="lg"
+                >
+                  {isProcessing ? 'Refreshing...' : 'Refresh Result'}
+                </Button>
+                {processedImages.length > 0 && (
+                  <Button
+                    onClick={downloadAll}
+                    variant="outline"
+                    size="lg"
+                  >
+                    Download All
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hidden canvas for processing */}
       <canvas ref={canvasRef} className="hidden" />

@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { 
   Play, 
   Square, 
@@ -13,6 +14,11 @@ import {
   Activity,
   Timer
 } from 'lucide-react'
+import {
+  FILE_SHARE_CLEANUP_INTERVAL_MS,
+  FILE_SHARE_EXPIRY_MS,
+  formatDurationShort,
+} from '@/lib/file-share-config'
 
 interface CronStatus {
   isRunning: boolean
@@ -25,29 +31,60 @@ interface CronStats {
   expiredFiles: number
   validFiles: number
   nextCleanup: number
+  lastRunAt: number | null
 }
+
+const TOKEN_STORAGE_KEY = 'utility-hub-cron-admin-token'
 
 export default function CronAdminPage() {
   const [status, setStatus] = useState<CronStatus | null>(null)
   const [stats, setStats] = useState<CronStats | null>(null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [adminToken, setAdminToken] = useState('')
+  const [authError, setAuthError] = useState<string | null>(null)
 
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
+    const token = adminToken.trim()
+
+    if (!token) {
+      setStatus(null)
+      setStats(null)
+      setAuthError('Enter the cron admin token to load cleanup status.')
+      return
+    }
+
     try {
-      const response = await fetch('/api/cron/cleanup')
+      const response = await fetch('/api/cron/cleanup', {
+        headers: {
+          'x-admin-token': token,
+        },
+      })
       const data = await response.json()
       
-      if (data.success) {
+      if (response.ok && data.success) {
+        setAuthError(null)
         setStatus(data.status)
         setStats(data.stats)
+        return
       }
-    } catch (error) {
-      console.error('Failed to fetch cron status:', error)
-    }
-  }
 
-  const handleAction = async (action: string) => {
+      setStatus(null)
+      setStats(null)
+      setAuthError(data.error || 'Failed to fetch cron status.')
+    } catch (error) {
+      setAuthError('Failed to fetch cron status.')
+    }
+  }, [adminToken])
+
+  const handleAction = useCallback(async (action: string) => {
+    const token = adminToken.trim()
+
+    if (!token) {
+      setAuthError('Enter the cron admin token before running admin actions.')
+      return
+    }
+
     setLoading(true)
     setMessage(null)
 
@@ -56,37 +93,60 @@ export default function CronAdminPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-admin-token': token,
         },
         body: JSON.stringify({ action }),
       })
 
       const data = await response.json()
       
-      if (data.success) {
+      if (response.ok && data.success) {
+        setAuthError(null)
         setMessage(data.message)
         await fetchStatus() // Refresh status
       } else {
-        setMessage(`Error: ${data.error}`)
+        setMessage(null)
+        setAuthError(data.error || 'Failed to perform action.')
       }
     } catch (error) {
-      setMessage('Failed to perform action')
+      setAuthError('Failed to perform action.')
     } finally {
       setLoading(false)
     }
-  }
+  }, [adminToken, fetchStatus])
 
   useEffect(() => {
-    fetchStatus()
-    
-    // Auto-refresh every 10 seconds
-    const interval = setInterval(fetchStatus, 10000)
-    return () => clearInterval(interval)
+    const savedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY)
+    if (savedToken) {
+      setAdminToken(savedToken)
+    }
   }, [])
 
+  useEffect(() => {
+    if (!adminToken.trim()) {
+      window.localStorage.removeItem(TOKEN_STORAGE_KEY)
+      return
+    }
+
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, adminToken.trim())
+  }, [adminToken])
+
+  useEffect(() => {
+    if (!adminToken.trim()) {
+      return
+    }
+
+    void fetchStatus()
+
+    const interval = setInterval(() => {
+      void fetchStatus()
+    }, 10000)
+
+    return () => clearInterval(interval)
+  }, [adminToken, fetchStatus])
+
   const formatTime = (ms: number) => {
-    const minutes = Math.floor(ms / 60000)
-    const seconds = Math.floor((ms % 60000) / 1000)
-    return `${minutes}m ${seconds}s`
+    return formatDurationShort(ms)
   }
 
   return (
@@ -101,9 +161,45 @@ export default function CronAdminPage() {
           </p>
         </div>
 
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Admin Token</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-text-secondary">
+              Enter the `CRON_ADMIN_TOKEN` configured on the server to access cleanup controls.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Input
+                type="password"
+                value={adminToken}
+                onChange={(event) => {
+                  setAdminToken(event.target.value)
+                  setAuthError(null)
+                  setMessage(null)
+                }}
+                placeholder="Enter admin token"
+              />
+              <Button
+                onClick={() => void fetchStatus()}
+                disabled={loading || !adminToken.trim()}
+                className="sm:w-auto"
+              >
+                Load Status
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {message && (
           <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl dark:bg-green-900/20 dark:border-green-800">
             <p className="text-green-700 dark:text-green-300 font-medium">{message}</p>
+          </div>
+        )}
+
+        {authError && (
+          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-xl">
+            <p className="text-destructive font-medium">{authError}</p>
           </div>
         )}
 
@@ -182,7 +278,7 @@ export default function CronAdminPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <Button
                 onClick={() => handleAction('start')}
-                disabled={loading || status?.isRunning}
+                disabled={loading || status?.isRunning || !adminToken.trim()}
                 className="flex items-center gap-2"
               >
                 <Play className="h-4 w-4" />
@@ -191,7 +287,7 @@ export default function CronAdminPage() {
 
               <Button
                 onClick={() => handleAction('stop')}
-                disabled={loading || !status?.isRunning}
+                disabled={loading || !status?.isRunning || !adminToken.trim()}
                 variant="outline"
                 className="flex items-center gap-2"
               >
@@ -201,7 +297,7 @@ export default function CronAdminPage() {
 
               <Button
                 onClick={() => handleAction('cleanup')}
-                disabled={loading}
+                disabled={loading || !adminToken.trim()}
                 variant="outline"
                 className="flex items-center gap-2"
               >
@@ -210,8 +306,8 @@ export default function CronAdminPage() {
               </Button>
 
               <Button
-                onClick={fetchStatus}
-                disabled={loading}
+                onClick={() => void fetchStatus()}
+                disabled={loading || !adminToken.trim()}
                 variant="outline"
                 className="flex items-center gap-2"
               >
@@ -235,17 +331,17 @@ export default function CronAdminPage() {
               <div>
                 <h3 className="font-semibold mb-2">Automatic Cleanup</h3>
                 <ul className="text-sm text-text-secondary space-y-1">
-                  <li>• Runs every 1 minute</li>
-                  <li>• Deletes files older than 5 minutes</li>
+                  <li>• Runs every {formatTime(FILE_SHARE_CLEANUP_INTERVAL_MS)}</li>
+                  <li>• Deletes expired and orphaned files</li>
                   <li>• Removes orphaned files</li>
-                  <li>• Updates file store automatically</li>
+                  <li>• Keeps file metadata in sync</li>
                 </ul>
               </div>
               
               <div>
                 <h3 className="font-semibold mb-2">File Expiry Rules</h3>
                 <ul className="text-sm text-text-secondary space-y-1">
-                  <li>• Files expire 5 minutes after upload</li>
+                  <li>• Files expire after {formatTime(FILE_SHARE_EXPIRY_MS)}</li>
                   <li>• Maximum 10 downloads per file</li>
                   <li>• Automatic cleanup on expiry</li>
                   <li>• No manual intervention needed</li>

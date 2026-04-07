@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "node --test --experimental-strip-types src/lib/pdf-organizer.test.ts src/lib/pdf-watermark.test.ts"
   },
   "dependencies": {
     "@types/uuid": "^10.0.0",

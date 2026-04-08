@@ -1,7 +1,12 @@
-import { PDFMerger } from '@/components/tools/PDFMerger'
+import { PDFToolPageLayout } from '@/components/tools/PDFToolPageLayout'
+import { PDFClientTool } from '@/components/tools/shared/PDFClientTool'
 
 export default function PDFMergerPage() {
-  return <PDFMerger />
+  return (
+    <PDFToolPageLayout currentToolId="pdf-merger">
+      <PDFClientTool toolId="pdf-merger" />
+    </PDFToolPageLayout>
+  )
 }
 
 export const metadata = {

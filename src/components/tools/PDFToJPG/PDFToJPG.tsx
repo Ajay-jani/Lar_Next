@@ -2,11 +2,12 @@
 
 import React, { useEffect, useMemo, useState } from 'react'
 import { Download, FileImage, Upload } from 'lucide-react'
-import { PDFDocument } from 'pdf-lib'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { formatFileSize, parsePageRanges } from '@/lib/page-ranges'
 import { createImageZip } from '@/lib/image-zip'
+import { isPdfFile, PDF_FILE_ACCEPT } from '@/lib/pdf-files'
+import { loadPdfLib } from '@/lib/pdf-runtime'
 
 type RangeMode = 'all' | 'custom'
 
@@ -114,7 +115,7 @@ export function PDFToJPG() {
       return
     }
 
-    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+    if (!isPdfFile(file)) {
       setError('Please choose a PDF file.')
       return
     }
@@ -125,6 +126,7 @@ export function PDFToJPG() {
     }
 
     try {
+      const { PDFDocument } = await loadPdfLib()
       const sourceBytes = await file.arrayBuffer()
       const pdfDocument = await PDFDocument.load(sourceBytes)
       const pageCount = pdfDocument.getPageCount()
@@ -230,7 +232,7 @@ export function PDFToJPG() {
             </CardHeader>
             <CardContent className="space-y-4">
               <label className="block rounded-3xl border border-dashed border-border bg-muted/25 p-8 text-center transition-colors hover:border-primary/40">
-                <input type="file" accept="application/pdf" className="hidden" onChange={handlePdfChange} />
+                <input type="file" accept={PDF_FILE_ACCEPT} className="hidden" onChange={handlePdfChange} />
                 <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                   <Upload className="h-6 w-6" />
                 </span>
@@ -359,7 +361,7 @@ export function PDFToJPG() {
                   {result.imageCount} image{result.imageCount === 1 ? '' : 's'} · {formatFileSize(result.size)}
                 </p>
               </div>
-              <a href={result.url} download={result.fileName}>
+              <a href={result.url} download={result.fileName} className="w-full md:w-auto">
                 <Button type="button" leftIcon={<Download className="h-4 w-4" />}>Download ZIP</Button>
               </a>
             </CardContent>

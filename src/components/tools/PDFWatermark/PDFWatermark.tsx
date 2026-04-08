@@ -2,14 +2,12 @@
 
 import React, { useEffect, useMemo, useState } from 'react'
 import { Image as ImageIcon, RotateCw, Stamp, Type, Upload } from 'lucide-react'
-import { PDFDocument } from 'pdf-lib'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { createPdfDownloadName, formatFileSize, parsePageRanges } from '@/lib/page-ranges'
-import {
-  applyPdfWatermark,
-  type WatermarkPosition,
-} from '@/lib/pdf-watermark'
+import { isPdfFile, PDF_FILE_ACCEPT } from '@/lib/pdf-files'
+import { loadPdfLib, loadPdfWatermarkModule } from '@/lib/pdf-runtime'
+import type { WatermarkPosition } from '@/lib/pdf-watermark'
 
 interface PDFFileInfo {
   file: File
@@ -94,7 +92,7 @@ export function PDFWatermark() {
       return
     }
 
-    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+    if (!isPdfFile(file)) {
       setError('Please choose a PDF file.')
       return
     }
@@ -105,6 +103,7 @@ export function PDFWatermark() {
     }
 
     try {
+      const { PDFDocument } = await loadPdfLib()
       const sourceBytes = await file.arrayBuffer()
       const pdfDocument = await PDFDocument.load(sourceBytes)
       const pageCount = pdfDocument.getPageCount()
@@ -165,6 +164,7 @@ export function PDFWatermark() {
     clearResult()
 
     try {
+      const { applyPdfWatermark } = await loadPdfWatermarkModule()
       const pageNumbers = rangeMode === 'all'
         ? undefined
         : parsePageRanges(pageRanges, pdfFile.pageCount)
@@ -228,7 +228,7 @@ export function PDFWatermark() {
             </CardHeader>
             <CardContent className="space-y-5">
               <label className="block rounded-3xl border border-dashed border-border bg-muted/25 p-8 text-center transition-colors hover:border-primary/40">
-                <input type="file" accept="application/pdf" className="hidden" onChange={handlePdfChange} />
+                <input type="file" accept={PDF_FILE_ACCEPT} className="hidden" onChange={handlePdfChange} />
                 <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                   <Upload className="h-6 w-6" />
                 </span>
@@ -345,7 +345,7 @@ export function PDFWatermark() {
                           key={option}
                           type="button"
                           onClick={() => setPosition(option)}
-                          className={`rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
+                          className={`rounded-xl border px-2 py-2 text-xs font-medium capitalize transition-colors sm:px-3 sm:text-sm ${
                             position === option
                               ? 'border-primary bg-primary/10 text-primary'
                               : 'border-border bg-background text-muted-foreground hover:text-foreground'
@@ -453,7 +453,7 @@ export function PDFWatermark() {
                   {result.pageCount} pages · {formatFileSize(result.size)}
                 </p>
               </div>
-              <a href={result.url} download={result.fileName}>
+              <a href={result.url} download={result.fileName} className="w-full md:w-auto">
                 <Button type="button">Download PDF</Button>
               </a>
             </CardContent>

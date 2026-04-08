@@ -1,10 +1,11 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { createPdfDownloadName, formatFileSize, parsePageRanges } from '@/lib/page-ranges'
+import { isPdfFile, PDF_FILE_ACCEPT } from '@/lib/pdf-files'
+import { loadPdfLib } from '@/lib/pdf-runtime'
 
 type RangeMode = 'all' | 'custom'
 type NumberPosition = 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'
@@ -98,7 +99,7 @@ export function PDFPageNumberer() {
       return
     }
 
-    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+    if (!isPdfFile(file)) {
       setError('Please choose a PDF file.')
       return
     }
@@ -109,6 +110,7 @@ export function PDFPageNumberer() {
     }
 
     try {
+      const { PDFDocument } = await loadPdfLib()
       const arrayBuffer = await file.arrayBuffer()
       const pdfDoc = await PDFDocument.load(arrayBuffer)
       const pageCount = pdfDoc.getPageCount()
@@ -130,6 +132,7 @@ export function PDFPageNumberer() {
     setError(null)
 
     try {
+      const { PDFDocument, StandardFonts, rgb } = await loadPdfLib()
       const sourceBytes = await pdfFile.file.arrayBuffer()
       const pdfDoc = await PDFDocument.load(sourceBytes)
       const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
@@ -196,7 +199,7 @@ export function PDFPageNumberer() {
             </CardHeader>
             <CardContent className="space-y-4">
               <label className="block rounded-3xl border border-dashed border-border bg-muted/25 p-8 text-center transition-colors hover:border-primary/40">
-                <input type="file" accept="application/pdf" className="hidden" onChange={handleFileChange} />
+                <input type="file" accept={PDF_FILE_ACCEPT} className="hidden" onChange={handleFileChange} />
                 <span className="block text-lg font-medium text-foreground">Choose a PDF file</span>
                 <span className="mt-2 block text-sm text-muted-foreground">Ideal for reports, handouts, proposals, and review drafts.</span>
               </label>
@@ -329,7 +332,7 @@ export function PDFPageNumberer() {
                   Numbered {result.numberedPages} page{result.numberedPages === 1 ? '' : 's'} · {formatFileSize(result.size)}
                 </p>
               </div>
-              <a href={result.url} download={result.fileName}>
+              <a href={result.url} download={result.fileName} className="w-full md:w-auto">
                 <Button type="button">Download PDF</Button>
               </a>
             </CardContent>

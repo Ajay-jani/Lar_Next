@@ -2,13 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { readFile, unlink } from 'fs/promises'
 import { existsSync } from 'fs'
 import { fileStore } from '@/lib/file-store'
+import { logger } from '@/lib/server-logger'
+
+type DownloadRouteContext = {
+  params: Promise<{ id: string }>
+}
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  _request: NextRequest,
+  { params }: DownloadRouteContext
 ) {
   try {
-    const fileId = params.id
+    const { id: fileId } = await params
 
     const result = await fileStore.claimDownload(fileId)
 
@@ -52,18 +57,18 @@ export async function GET(
     return response
     
   } catch (error) {
-    console.error('Download error:', error)
+    logger.error('Download error:', error)
     return new NextResponse('Download failed', { status: 500 })
   }
 }
 
 // Also handle HEAD requests for file info
 export async function HEAD(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  _request: NextRequest,
+  { params }: DownloadRouteContext
 ) {
   try {
-    const fileId = params.id
+    const { id: fileId } = await params
     const fileData = await fileStore.get(fileId)
     
     if (!fileData || fileData.expiresAt < new Date()) {
@@ -86,7 +91,7 @@ export async function HEAD(
       }
     })
     
-  } catch (error) {
+  } catch {
     return new NextResponse(null, { status: 500 })
   }
 }

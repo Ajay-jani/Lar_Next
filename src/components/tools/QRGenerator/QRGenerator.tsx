@@ -4,6 +4,7 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { ToolPageIntro } from '@/components/tools/shared/ToolPageIntro'
 
 interface QRSettings {
   text: string
@@ -337,27 +338,16 @@ export function QRGenerator() {
   ]
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-foreground mb-4">QR Code Generator</h1>
-        <p className="text-muted-foreground text-lg">
-          Create beautiful, customizable QR codes with advanced styling options
-        </p>
-        <div className="flex justify-center gap-4 mt-4 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-primary rounded-full"></div>
-            <span className="text-muted-foreground">Multiple formats</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-success rounded-full"></div>
-            <span className="text-muted-foreground">Custom styling</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-warning rounded-full"></div>
-            <span className="text-muted-foreground">Logo support</span>
-          </div>
-        </div>
-      </div>
+    <div className="container mx-auto max-w-6xl px-4 py-8">
+      <ToolPageIntro
+        title="QR Code Generator"
+        description="Create customizable QR codes with flexible styling, formats, and optional logo support."
+        features={[
+          { label: 'Multiple formats', tone: 'primary' },
+          { label: 'Custom styling', tone: 'success' },
+          { label: 'Logo support', tone: 'warning' },
+        ]}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Settings Panel */}
@@ -461,7 +451,7 @@ export function QRGenerator() {
                 <label className="block text-sm font-medium text-foreground mb-3">
                   Color Presets
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {presetColors.map((preset) => (
                     <button
                       key={preset.name}
@@ -590,9 +580,9 @@ export function QRGenerator() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+              <CardTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 Preview
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => setPreviewMode('light')}
@@ -660,7 +650,7 @@ export function QRGenerator() {
                     </Button>
                   </a>
                   
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <Button
                       variant="outline"
                       onClick={() => {

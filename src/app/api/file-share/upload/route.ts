@@ -10,6 +10,7 @@ import {
   FILE_SHARE_MAX_FILE_SIZE,
   FILE_SHARE_STORE_DIRNAME,
 } from '@/lib/file-share-config'
+import { logger } from '@/lib/server-logger'
 
 const UPLOAD_DIR = path.join(process.cwd(), FILE_SHARE_STORE_DIRNAME)
 
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
     })
     
   } catch (error) {
-    console.error('Upload error:', error)
+    logger.error('Upload error:', error)
     return NextResponse.json(
       { success: false, error: 'Upload failed' },
       { status: 500 }

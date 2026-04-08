@@ -1,10 +1,11 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
-import { PDFDocument, degrees } from 'pdf-lib'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { createPdfDownloadName, formatFileSize, parsePageRanges } from '@/lib/page-ranges'
+import { isPdfFile, PDF_FILE_ACCEPT } from '@/lib/pdf-files'
+import { loadPdfLib } from '@/lib/pdf-runtime'
 
 type RotationAngle = 90 | 180 | 270
 type RangeMode = 'all' | 'custom'
@@ -58,7 +59,7 @@ export function PDFRotator() {
       return
     }
 
-    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+    if (!isPdfFile(file)) {
       setError('Please select a PDF file.')
       return
     }
@@ -69,6 +70,7 @@ export function PDFRotator() {
     }
 
     try {
+      const { PDFDocument } = await loadPdfLib()
       const arrayBuffer = await file.arrayBuffer()
       const pdfDoc = await PDFDocument.load(arrayBuffer)
       const pageCount = pdfDoc.getPageCount()
@@ -91,6 +93,7 @@ export function PDFRotator() {
     setError(null)
 
     try {
+      const { PDFDocument, degrees } = await loadPdfLib()
       const arrayBuffer = await pdfFile.file.arrayBuffer()
       const pdfDoc = await PDFDocument.load(arrayBuffer)
       const selectedPages = rangeMode === 'all'
@@ -142,7 +145,7 @@ export function PDFRotator() {
             </CardHeader>
             <CardContent className="space-y-4">
               <label className="block rounded-3xl border border-dashed border-border bg-muted/25 p-8 text-center transition-colors hover:border-primary/40">
-                <input type="file" accept="application/pdf" className="hidden" onChange={handleFileChange} />
+                <input type="file" accept={PDF_FILE_ACCEPT} className="hidden" onChange={handleFileChange} />
                 <span className="block text-lg font-medium text-foreground">Choose a PDF file</span>
                 <span className="mt-2 block text-sm text-muted-foreground">Up to 100MB. Everything stays in your browser.</span>
               </label>
@@ -163,7 +166,7 @@ export function PDFRotator() {
             <CardContent className="space-y-5">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Rotate by</label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                   {([90, 180, 270] as RotationAngle[]).map(option => (
                     <button
                       key={option}
@@ -183,7 +186,7 @@ export function PDFRotator() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Apply to</label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {(['all', 'custom'] as RangeMode[]).map(mode => (
                     <button
                       key={mode}
@@ -239,7 +242,7 @@ export function PDFRotator() {
                   Rotated {result.rotatedPages} page{result.rotatedPages === 1 ? '' : 's'} · {formatFileSize(result.size)}
                 </p>
               </div>
-              <a href={result.url} download={result.fileName}>
+              <a href={result.url} download={result.fileName} className="w-full md:w-auto">
                 <Button type="button">Download PDF</Button>
               </a>
             </CardContent>

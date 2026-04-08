@@ -2,17 +2,23 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { PDFDocument } from 'pdf-lib'
 
-const organizerModule: typeof import('./pdf-organizer') = await import(new URL('./pdf-organizer.ts', import.meta.url).href)
+const organizerStateModule: typeof import('./pdf-organizer-state') = await import(
+  new URL('./pdf-organizer-state.ts', import.meta.url).href
+)
+const organizerExportModule: typeof import('./pdf-organizer-export') = await import(
+  new URL('./pdf-organizer-export.ts', import.meta.url).href
+)
 
 const {
   createOrganizerPages,
-  exportOrganizedPdf,
   insertBlankPage,
   moveOrganizerPage,
   nudgeOrganizerPage,
   removeOrganizerPage,
   rotateOrganizerPage,
-} = organizerModule
+} = organizerStateModule
+
+const { exportOrganizedPdf } = organizerExportModule
 
 async function createPdfBytes(pageSizes: Array<[number, number]>) {
   const document = await PDFDocument.create()

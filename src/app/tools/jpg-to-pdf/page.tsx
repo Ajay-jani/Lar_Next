@@ -1,7 +1,12 @@
-import { JPGToPDF } from '@/components/tools/JPGToPDF'
+import { PDFToolPageLayout } from '@/components/tools/PDFToolPageLayout'
+import { PDFClientTool } from '@/components/tools/shared/PDFClientTool'
 
 export default function JPGToPDFPage() {
-  return <JPGToPDF />
+  return (
+    <PDFToolPageLayout currentToolId="jpg-to-pdf">
+      <PDFClientTool toolId="jpg-to-pdf" />
+    </PDFToolPageLayout>
+  )
 }
 
 export const metadata = {

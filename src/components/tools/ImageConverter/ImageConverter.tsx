@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { ToolPageIntro } from '@/components/tools/shared/ToolPageIntro'
 
 interface ImageFile {
   file: File
@@ -577,27 +578,16 @@ export function ImageConverter() {
   }, [])
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-foreground mb-4">Image Converter & Filter</h1>
-        <p className="text-muted-foreground text-lg">
-          Convert images between formats and apply professional filters
-        </p>
-        <div className="flex justify-center gap-4 mt-4 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-primary rounded-full"></div>
-            <span className="text-muted-foreground">Multiple formats</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-success rounded-full"></div>
-            <span className="text-muted-foreground">Advanced filters</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-warning rounded-full"></div>
-            <span className="text-muted-foreground">Batch processing</span>
-          </div>
-        </div>
-      </div>
+    <div className="container mx-auto max-w-7xl px-4 py-8">
+      <ToolPageIntro
+        title="Image Converter & Filter"
+        description="Convert images between formats and apply professional filters."
+        features={[
+          { label: 'Multiple formats', tone: 'primary' },
+          { label: 'Advanced filters', tone: 'success' },
+          { label: 'Batch processing', tone: 'warning' },
+        ]}
+      />
 
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
         {/* Upload Section */}
@@ -691,7 +681,7 @@ export function ImageConverter() {
                 Uploading images now creates a default converted result automatically. Use these
                 quick buttons if you want a different format right away.
               </p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {(['jpeg', 'png', 'webp'] as const).map((format) => (
                   <Button
                     key={format}
@@ -743,7 +733,7 @@ export function ImageConverter() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <div>
                       <label htmlFor="width-input" className="block text-sm font-medium text-foreground mb-2">
                         Width (px)
@@ -815,10 +805,10 @@ export function ImageConverter() {
         <div className="xl:col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+              <CardTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 Preview
                 {selectedImage && (
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={() => setPreviewMode('original')}
@@ -934,7 +924,7 @@ export function ImageConverter() {
               <CardTitle>Filter Presets</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {Object.entries(FILTER_PRESETS).map(([key, preset]) => (
                   <Button
                     key={key}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { timingSafeEqual } from 'crypto'
 import { getFileCleanupCron } from '@/lib/file-cleanup-cron'
+import { logger } from '@/lib/server-logger'
 
 function getAuthorizationError(request: NextRequest): NextResponse | null {
   const expectedToken = process.env.CRON_ADMIN_TOKEN?.trim()
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
       message: status.isRunning ? 'Cron job is running' : 'Cron job is stopped'
     })
   } catch (error) {
-    console.error('Error getting cron status:', error)
+    logger.error('Error getting cron status:', error)
     return NextResponse.json(
       { success: false, error: 'Failed to get cron status' },
       { status: 500 }
@@ -109,7 +110,7 @@ export async function POST(request: NextRequest) {
         )
     }
   } catch (error) {
-    console.error('Error handling cron action:', error)
+    logger.error('Error handling cron action:', error)
     return NextResponse.json(
       { success: false, error: 'Failed to process cron action' },
       { status: 500 }

@@ -4,7 +4,8 @@ import React, { useState, useCallback, useRef } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { PDFDocument, degrees } from 'pdf-lib'
+import { isPdfFile } from '@/lib/pdf-files'
+import { loadPdfLib } from '@/lib/pdf-runtime'
 
 interface PDFFile {
   id: string
@@ -59,6 +60,7 @@ export function PDFMerger() {
   // Analyze PDF file to get page count and generate thumbnail
   const analyzePDF = useCallback(async (file: File): Promise<{ pageCount: number; thumbnail: string }> => {
     try {
+      const { PDFDocument } = await loadPdfLib()
       const arrayBuffer = await file.arrayBuffer()
       const pdfDoc = await PDFDocument.load(arrayBuffer)
       const pageCount = pdfDoc.getPageCount()
@@ -108,7 +110,7 @@ export function PDFMerger() {
     if (!files) return
 
     const validFiles = Array.from(files).filter(file => {
-      if (file.type !== 'application/pdf') {
+      if (!isPdfFile(file)) {
         setError('Please select only PDF files')
         return false
       }
@@ -230,6 +232,7 @@ export function PDFMerger() {
   // Advanced PDF merging using PDF-lib
   const createMergedPDF = useCallback(async (files: PDFFile[]): Promise<Blob> => {
     try {
+      const { PDFDocument, degrees } = await loadPdfLib()
       const mergedPdf = await PDFDocument.create()
       
       // Set metadata
@@ -321,6 +324,7 @@ export function PDFMerger() {
     setProgress(0)
 
     try {
+      const { PDFDocument } = await loadPdfLib()
       // Validate all files before processing
       for (const pdfFile of pdfFiles) {
         if (pdfFile.selectedPages && pdfFile.selectedPages.length > 0) {

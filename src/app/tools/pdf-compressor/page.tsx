@@ -1,4 +1,5 @@
-import { PDFCompressor } from '@/components/tools/PDFCompressor'
+import { PDFToolPageLayout } from '@/components/tools/PDFToolPageLayout'
+import { PDFClientTool } from '@/components/tools/shared/PDFClientTool'
 
 export const metadata = {
   title: 'PDF Compressor - Dev Utilities Hub',
@@ -6,5 +7,9 @@ export const metadata = {
 }
 
 export default function PDFCompressorPage() {
-  return <PDFCompressor />
+  return (
+    <PDFToolPageLayout currentToolId="pdf-compressor">
+      <PDFClientTool toolId="pdf-compressor" />
+    </PDFToolPageLayout>
+  )
 }

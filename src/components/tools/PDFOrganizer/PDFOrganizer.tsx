@@ -12,21 +12,21 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react'
-import { PDFDocument } from 'pdf-lib'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { createPdfDownloadName, formatFileSize } from '@/lib/page-ranges'
+import { isPdfFile, PDF_FILE_ACCEPT } from '@/lib/pdf-files'
 import {
   appendBlankPage,
   createOrganizerPages,
-  exportOrganizedPdf,
   insertBlankPage,
   nudgeOrganizerPage,
   moveOrganizerPage,
   removeOrganizerPage,
   rotateOrganizerPage,
   type OrganizerPageItem,
-} from '@/lib/pdf-organizer'
+} from '@/lib/pdf-organizer-state'
+import { loadPdfLib, loadPdfOrganizerExport } from '@/lib/pdf-runtime'
 
 interface SourceFileInfo {
   id: string
@@ -121,6 +121,7 @@ export function PDFOrganizer() {
   }, [clearResult])
 
   const analyzePdf = useCallback(async (file: File) => {
+    const { PDFDocument } = await loadPdfLib()
     const arrayBuffer = await file.arrayBuffer()
     const pdfDocument = await PDFDocument.load(arrayBuffer)
 
@@ -141,7 +142,7 @@ export function PDFOrganizer() {
       const nextSourceFiles: SourceFileInfo[] = []
 
       for (const file of selectedFiles) {
-        if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+        if (!isPdfFile(file)) {
           throw new Error(`"${file.name}" is not a PDF file.`)
         }
 
@@ -230,6 +231,7 @@ export function PDFOrganizer() {
     clearResult()
 
     try {
+      const { exportOrganizedPdf } = await loadPdfOrganizerExport()
       const sourceDocuments = await Promise.all(sourceFiles.map(async sourceFile => ({
         id: sourceFile.id,
         bytes: await sourceFile.file.arrayBuffer(),
@@ -279,7 +281,7 @@ export function PDFOrganizer() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="application/pdf"
+                  accept={PDF_FILE_ACCEPT}
                   multiple
                   className="hidden"
                   onChange={handleInputChange}
@@ -302,9 +304,9 @@ export function PDFOrganizer() {
 
                     return (
                       <div key={sourceFile.id} className={`rounded-2xl border p-4 ${style.panel}`}>
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-medium text-foreground">{sourceFile.name}</p>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="break-words font-medium text-foreground">{sourceFile.name}</p>
                             <p className="mt-1 text-sm text-muted-foreground">
                               {sourceFile.pageCount} pages · {formatFileSize(sourceFile.size)}
                             </p>
@@ -576,7 +578,7 @@ export function PDFOrganizer() {
                   {result.pageCount} page{result.pageCount === 1 ? '' : 's'} · {formatFileSize(result.size)}
                 </p>
               </div>
-              <a href={result.url} download={result.fileName}>
+              <a href={result.url} download={result.fileName} className="w-full md:w-auto">
                 <Button type="button">Download PDF</Button>
               </a>
             </CardContent>

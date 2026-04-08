@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { fileStore } from '@/lib/file-store'
 import { getUploadStats } from '@/lib/file-cleanup'
+import { logger } from '@/lib/server-logger'
 
 export async function GET() {
   try {
@@ -36,7 +37,7 @@ export async function GET() {
     })
     
   } catch (error) {
-    console.error('Stats error:', error)
+    logger.error('Stats error:', error)
     return NextResponse.json(
       { success: false, error: 'Failed to get stats' },
       { status: 500 }

@@ -4,7 +4,8 @@ import React, { useState, useCallback, useRef } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { PDFDocument } from 'pdf-lib'
+import { isPdfFile } from '@/lib/pdf-files'
+import { loadPdfLib } from '@/lib/pdf-runtime'
 
 interface PDFFile {
   id: string
@@ -68,6 +69,7 @@ export function PDFSplitter() {
   // Analyze PDF file to get page count and generate thumbnail
   const analyzePDF = useCallback(async (file: File): Promise<{ pageCount: number; thumbnail: string }> => {
     try {
+      const { PDFDocument } = await loadPdfLib()
       const arrayBuffer = await file.arrayBuffer()
       const pdfDoc = await PDFDocument.load(arrayBuffer)
       const pageCount = pdfDoc.getPageCount()
@@ -117,7 +119,7 @@ export function PDFSplitter() {
     if (!files || files.length === 0) return
 
     const file = files[0]
-    if (file.type !== 'application/pdf') {
+    if (!isPdfFile(file)) {
       setError('Please select a PDF file')
       return
     }
@@ -197,6 +199,7 @@ export function PDFSplitter() {
     splitUrlsRef.current = []
 
     try {
+      const { PDFDocument } = await loadPdfLib()
       const arrayBuffer = await pdfFile.file.arrayBuffer()
       const sourcePdf = await PDFDocument.load(arrayBuffer)
       const totalPages = sourcePdf.getPageCount()

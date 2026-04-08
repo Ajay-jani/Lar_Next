@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import {
+  ClipboardSignature,
   Code,
   FileEdit,
   FileImage,
@@ -31,6 +32,7 @@ export interface ToolCatalogItem {
   icon: LucideIcon
   featured: boolean
   speedLabel: 'Instant' | 'Fast' | 'Workflow'
+  bannerLabel?: string
   highlights: string[]
 }
 
@@ -98,6 +100,7 @@ export const toolCatalog: ToolCatalogItem[] = [
     icon: Merge,
     featured: true,
     speedLabel: 'Workflow',
+    bannerLabel: 'Bulk PDF Service',
     highlights: ['Drag reorder', 'Page selection', 'Single export'],
   },
   {
@@ -111,6 +114,7 @@ export const toolCatalog: ToolCatalogItem[] = [
     icon: Split,
     featured: true,
     speedLabel: 'Workflow',
+    bannerLabel: 'Bulk PDF Service',
     highlights: ['Range-based splits', 'Multiple outputs', 'Browser-only'],
   },
   {
@@ -150,6 +154,7 @@ export const toolCatalog: ToolCatalogItem[] = [
     icon: LayoutGrid,
     featured: true,
     speedLabel: 'Workflow',
+    bannerLabel: 'Bulk PDF Service',
     highlights: ['Page sorting', 'Blank pages', 'iLovePDF-style flow'],
   },
   {
@@ -179,6 +184,19 @@ export const toolCatalog: ToolCatalogItem[] = [
     highlights: ['Text or image', 'Opacity control', 'iLovePDF-style flow'],
   },
   {
+    id: 'pdf-signer',
+    name: 'Sign PDF',
+    description: 'Sign PDF files with a typed, drawn, or uploaded signature and place it exactly where you need it.',
+    href: '/tools/pdf-signer',
+    status: 'new',
+    category: 'pdf',
+    categoryLabel: 'PDF Tools',
+    icon: ClipboardSignature,
+    featured: true,
+    speedLabel: 'Workflow',
+    highlights: ['Type, draw, or upload', 'Last page or custom', 'Browser-only signing'],
+  },
+  {
     id: 'jpg-to-pdf',
     name: 'JPG to PDF',
     description: 'Turn JPG and PNG images into a single PDF with layout controls for print or sharing.',
@@ -189,6 +207,7 @@ export const toolCatalog: ToolCatalogItem[] = [
     icon: FileImage,
     featured: true,
     speedLabel: 'Workflow',
+    bannerLabel: 'Bulk PDF Service',
     highlights: ['A4 or Letter', 'Contain or cover', 'iLovePDF-style flow'],
   },
   {
@@ -306,3 +325,28 @@ export const toolsByCategory = categoryOrder.map(category => ({
   label: toolCatalog.find(tool => tool.category === category)?.categoryLabel ?? category,
   tools: toolCatalog.filter(tool => tool.category === category),
 }))
+
+export function getRelatedTools(
+  currentToolId: ToolCatalogItem['id'],
+  category: ToolCategoryId,
+  limit = 4
+): ToolCatalogItem[] {
+  return toolCatalog
+    .map((tool, index) => ({ tool, index }))
+    .filter(({ tool }) => tool.category === category && tool.id !== currentToolId)
+    .sort((left, right) => {
+      const bannerScore = Number(Boolean(right.tool.bannerLabel)) - Number(Boolean(left.tool.bannerLabel))
+      if (bannerScore !== 0) {
+        return bannerScore
+      }
+
+      const featuredScore = Number(right.tool.featured) - Number(left.tool.featured)
+      if (featuredScore !== 0) {
+        return featuredScore
+      }
+
+      return left.index - right.index
+    })
+    .slice(0, limit)
+    .map(({ tool }) => tool)
+}

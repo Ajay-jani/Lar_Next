@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useRef } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { AnimatedUploadProgressCard } from '@/components/tools/shared/AnimatedUploadProgressCard'
 import {
   FILE_SHARE_EXPIRY_MS,
   FILE_SHARE_MAX_FILE_SIZE,
@@ -30,6 +31,9 @@ interface UploadResponse {
 export function FileShare() {
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadStatus, setUploadStatus] = useState('Waiting for a file')
+  const [uploadingFileName, setUploadingFileName] = useState('')
   const [dragActive, setDragActive] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [timeRemaining, setTimeRemaining] = useState<string>('')
@@ -37,6 +41,8 @@ export function FileShare() {
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  const wait = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms))
 
   // Calculate time remaining
   const updateTimeRemaining = useCallback(() => {
@@ -116,20 +122,59 @@ export function FileShare() {
     }
     
     setIsUploading(true)
+    setUploadProgress(3)
+    setUploadStatus('Securing your file for upload...')
+    setUploadingFileName(file.name)
     setError(null)
-    
-    const formData = new FormData()
-    formData.append('file', file)
-    
+    setCopyStatus(null)
+
     try {
-      const response = await fetch('/api/file-share/upload', {
-        method: 'POST',
-        body: formData,
+      const result: UploadResponse = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        const formData = new FormData()
+        formData.append('file', file)
+
+        xhr.open('POST', '/api/file-share/upload')
+
+        xhr.upload.onprogress = event => {
+          if (!event.lengthComputable) {
+            return
+          }
+
+          const progress = Math.round((event.loaded / event.total) * 100)
+          setUploadProgress(Math.min(progress, 96))
+          setUploadStatus(
+            progress < 45
+              ? 'Sending encrypted file data...'
+              : progress < 90
+                ? 'Almost there. Building the share link...'
+                : 'Finishing the secure upload handoff...'
+          )
+        }
+
+        xhr.onerror = () => reject(new Error('Network error. Please try again.'))
+        xhr.onload = () => {
+          try {
+            const parsed = JSON.parse(xhr.responseText || '{}') as UploadResponse
+
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve(parsed)
+              return
+            }
+
+            reject(new Error(parsed.error || 'Upload failed'))
+          } catch (_error) {
+            reject(new Error('Upload completed, but the server response was invalid.'))
+          }
+        }
+
+        xhr.send(formData)
       })
-      
-      const result: UploadResponse = await response.json()
-      
+
       if (result.success && result.file) {
+        setUploadProgress(100)
+        setUploadStatus('Share link ready. Adding the final shine...')
+        await wait(240)
         setUploadedFile(result.file)
         setCopyStatus('Preparing link...')
         void copyToClipboard(result.file.url, 'Link copied automatically')
@@ -177,6 +222,9 @@ export function FileShare() {
     setUploadedFile(null)
     setError(null)
     setCopyStatus(null)
+    setUploadProgress(0)
+    setUploadStatus('Waiting for a file')
+    setUploadingFileName('')
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -221,37 +269,46 @@ export function FileShare() {
           <CardContent>
             {!uploadedFile ? (
               <div className="space-y-4">
-                {/* Drag & Drop Area */}
-                <div
-                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                    dragActive
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-primary/50'
-                  }`}
-                  onDragEnter={handleDrag}
-                  onDragLeave={handleDrag}
-                  onDragOver={handleDrag}
-                  onDrop={handleDrop}
-                >
-                  <div className="space-y-4">
-                    <div className="text-4xl">📁</div>
-                    <div>
-                      <p className="text-lg font-medium">
-                        {dragActive ? 'Drop file here' : 'Drag & drop your file'}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        or click to browse
-                      </p>
+                {isUploading ? (
+                  <AnimatedUploadProgressCard
+                    progress={uploadProgress}
+                    fileName={uploadingFileName || 'Uploading file'}
+                    title="Uploading your file"
+                    status={uploadStatus}
+                    caption="Hang tight. We are shipping your file, creating the temporary link, and getting it ready to share."
+                  />
+                ) : (
+                  <div
+                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                      dragActive
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                    onDragEnter={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDragOver={handleDrag}
+                    onDrop={handleDrop}
+                  >
+                    <div className="space-y-4">
+                      <div className="text-4xl">📁</div>
+                      <div>
+                        <p className="text-lg font-medium">
+                          {dragActive ? 'Drop file here' : 'Drag & drop your file'}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          or click to browse
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                        className="mt-4"
+                      >
+                        {isUploading ? 'Uploading...' : 'Choose File'}
+                      </Button>
                     </div>
-                    <Button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isUploading}
-                      className="mt-4"
-                    >
-                      {isUploading ? 'Uploading...' : 'Choose File'}
-                    </Button>
                   </div>
-                </div>
+                )}
 
                 <input
                   ref={fileInputRef}

@@ -110,6 +110,13 @@ export default function HomePage() {
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                      {tool.bannerLabel ? (
+                        <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+                            {tool.bannerLabel}
+                          </span>
+                        </div>
+                      ) : null}
                       <p className="text-muted-foreground leading-relaxed">
                         {tool.description}
                       </p>

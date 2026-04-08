@@ -1,7 +1,12 @@
-import { PDFPageExtractor } from '@/components/tools/PDFPageExtractor'
+import { PDFToolPageLayout } from '@/components/tools/PDFToolPageLayout'
+import { PDFClientTool } from '@/components/tools/shared/PDFClientTool'
 
 export default function PDFPageExtractorPage() {
-  return <PDFPageExtractor />
+  return (
+    <PDFToolPageLayout currentToolId="pdf-page-extractor">
+      <PDFClientTool toolId="pdf-page-extractor" />
+    </PDFToolPageLayout>
+  )
 }
 
 export const metadata = {

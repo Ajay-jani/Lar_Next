@@ -1,7 +1,12 @@
-import { PDFSplitter } from '@/components/tools/PDFSplitter'
+import { PDFToolPageLayout } from '@/components/tools/PDFToolPageLayout'
+import { PDFClientTool } from '@/components/tools/shared/PDFClientTool'
 
 export default function PDFSplitterPage() {
-  return <PDFSplitter />
+  return (
+    <PDFToolPageLayout currentToolId="pdf-splitter">
+      <PDFClientTool toolId="pdf-splitter" />
+    </PDFToolPageLayout>
+  )
 }
 
 export const metadata = {

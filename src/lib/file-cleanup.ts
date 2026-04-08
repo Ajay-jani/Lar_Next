@@ -6,6 +6,7 @@ import {
   FILE_SHARE_EXPIRY_MS,
   FILE_SHARE_STORE_DIRNAME,
 } from './file-share-config'
+import { logger } from './server-logger'
 
 const UPLOAD_DIR = path.join(process.cwd(), FILE_SHARE_STORE_DIRNAME)
 const MAX_FILE_AGE = FILE_SHARE_EXPIRY_MS
@@ -41,15 +42,15 @@ export async function cleanupOldFiles(): Promise<void> {
         // Delete files older than MAX_FILE_AGE
         if (fileAge > MAX_FILE_AGE) {
           await unlink(filePath)
-          console.log(`Cleaned up old file: ${file}`)
+          logger.info(`Cleaned up old file: ${file}`)
         }
       } catch (error) {
         // File might have been deleted already, continue
-        console.warn(`Error processing file ${file}:`, error)
+        logger.warn(`Error processing file ${file}:`, error)
       }
     }
   } catch (error) {
-    console.error('Error during file cleanup:', error)
+    logger.error('Error during file cleanup:', error)
   }
 }
 
@@ -64,7 +65,7 @@ export function startFileCleanup(): void {
   // Set up periodic cleanup
   setInterval(cleanupOldFiles, FILE_SHARE_CLEANUP_INTERVAL_MS)
   
-  console.log(
+  logger.info(
     `File cleanup started - running every ${FILE_SHARE_CLEANUP_INTERVAL_MS / 1000 / 60} minutes`
   )
 }
@@ -111,7 +112,7 @@ export async function getUploadStats(): Promise<{
       oldestFile
     }
   } catch (error) {
-    console.error('Error getting upload stats:', error)
+    logger.error('Error getting upload stats:', error)
     return { totalFiles: 0, totalSize: 0, oldestFile: null }
   }
 }

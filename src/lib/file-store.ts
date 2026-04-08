@@ -5,6 +5,7 @@ import {
   FILE_SHARE_MAX_DOWNLOADS,
   FILE_SHARE_STORE_DIRNAME,
 } from './file-share-config'
+import { logger } from './server-logger'
 
 export interface FileData {
   id: string
@@ -121,7 +122,7 @@ async function loadStore(): Promise<Map<string, FileData>> {
     
     return store
   } catch (error) {
-    console.error('Error loading file store:', error)
+    logger.error('Error loading file store:', error)
     return new Map()
   }
 }
@@ -135,7 +136,7 @@ async function saveStore(store: Map<string, FileData>): Promise<void> {
     await writeFile(tempFile, JSON.stringify(obj, null, 2))
     await rename(tempFile, STORE_FILE)
   } catch (error) {
-    console.error('Error saving file store:', error)
+    logger.error('Error saving file store:', error)
   }
 }
 
@@ -301,6 +302,6 @@ export async function cleanupExpiredFiles(): Promise<void> {
       }
     }
   } catch (error) {
-    console.error('Error during cleanup:', error)
+    logger.error('Error during cleanup:', error)
   }
 }

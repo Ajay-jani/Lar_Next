@@ -1,7 +1,12 @@
-import { PDFOrganizer } from '@/components/tools/PDFOrganizer'
+import { PDFToolPageLayout } from '@/components/tools/PDFToolPageLayout'
+import { PDFClientTool } from '@/components/tools/shared/PDFClientTool'
 
 export default function PDFOrganizerPage() {
-  return <PDFOrganizer />
+  return (
+    <PDFToolPageLayout currentToolId="pdf-organizer">
+      <PDFClientTool toolId="pdf-organizer" />
+    </PDFToolPageLayout>
+  )
 }
 
 export const metadata = {

@@ -4,6 +4,8 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { ToolPageIntro } from '@/components/tools/shared/ToolPageIntro'
+import { ToolStatGrid } from '@/components/tools/shared/ToolStatGrid'
 
 interface CompressionSettings {
   quality: number
@@ -278,23 +280,15 @@ export function ImageCompressor() {
   }, [selectedFile, settings.outputFormat, settings.compressionMode])
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-foreground mb-4">Image Compressor</h1>
-        <p className="text-muted-foreground text-lg">
-          Reduce image file size with lossy or lossless compression. Perfect for web optimization.
-        </p>
-        <div className="flex justify-center gap-4 mt-4 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-primary rounded-full"></div>
-            <span className="text-muted-foreground">Lossy: Smaller files</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-success rounded-full"></div>
-            <span className="text-muted-foreground">Lossless: Perfect quality</span>
-          </div>
-        </div>
-      </div>
+    <div className="container mx-auto max-w-4xl px-4 py-8">
+      <ToolPageIntro
+        title="Image Compressor"
+        description="Reduce image file size with lossy or lossless compression. Perfect for web optimization."
+        features={[
+          { label: 'Lossy: Smaller files', tone: 'primary' },
+          { label: 'Lossless: Perfect quality', tone: 'success' },
+        ]}
+      />
 
       <div className="space-y-6">
         {/* Upload Section */}
@@ -352,7 +346,7 @@ export function ImageCompressor() {
                 <label className="block text-sm font-medium text-foreground mb-3">
                   Compression Mode
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <button
                     type="button"
                     onClick={() => updateCompressionMode('lossy')}
@@ -448,7 +442,7 @@ export function ImageCompressor() {
                 </div>
               )}
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label htmlFor="max-width" className="block text-sm font-medium text-foreground mb-2">
                     Max Width (px)
@@ -498,26 +492,13 @@ export function ImageCompressor() {
               <CardTitle>Compression Results</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-4 mb-6 text-center">
-                <div>
-                  <div className="text-2xl font-bold text-foreground">
-                    {formatFileSize(result.originalSize)}
-                  </div>
-                  <div className="text-muted-foreground text-sm">Original</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-success">
-                    {formatFileSize(result.newSize)}
-                  </div>
-                  <div className="text-muted-foreground text-sm">Compressed</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-info">
-                    {compressionRatio.toFixed(1)}%
-                  </div>
-                  <div className="text-muted-foreground text-sm">Saved</div>
-                </div>
-              </div>
+              <ToolStatGrid
+                items={[
+                  { label: 'Original', value: formatFileSize(result.originalSize) },
+                  { label: 'Compressed', value: formatFileSize(result.newSize), tone: 'success' },
+                  { label: 'Saved', value: `${compressionRatio.toFixed(1)}%`, tone: 'info' },
+                ]}
+              />
               
               <a
                 href={result.downloadUrl}

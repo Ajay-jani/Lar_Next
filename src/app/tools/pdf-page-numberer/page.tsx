@@ -1,7 +1,12 @@
-import { PDFPageNumberer } from '@/components/tools/PDFPageNumberer'
+import { PDFToolPageLayout } from '@/components/tools/PDFToolPageLayout'
+import { PDFClientTool } from '@/components/tools/shared/PDFClientTool'
 
 export default function PDFPageNumbererPage() {
-  return <PDFPageNumberer />
+  return (
+    <PDFToolPageLayout currentToolId="pdf-page-numberer">
+      <PDFClientTool toolId="pdf-page-numberer" />
+    </PDFToolPageLayout>
+  )
 }
 
 export const metadata = {

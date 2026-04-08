@@ -1,7 +1,12 @@
-import { PDFRotator } from '@/components/tools/PDFRotator'
+import { PDFToolPageLayout } from '@/components/tools/PDFToolPageLayout'
+import { PDFClientTool } from '@/components/tools/shared/PDFClientTool'
 
 export default function PDFRotatorPage() {
-  return <PDFRotator />
+  return (
+    <PDFToolPageLayout currentToolId="pdf-rotator">
+      <PDFClientTool toolId="pdf-rotator" />
+    </PDFToolPageLayout>
+  )
 }
 
 export const metadata = {

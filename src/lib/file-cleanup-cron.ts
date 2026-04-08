@@ -5,6 +5,7 @@ import {
 } from './file-share-config'
 import { cleanupOldFiles } from './file-cleanup'
 import { cleanupExpiredFiles, fileStore } from './file-store'
+import { logger } from './server-logger'
 
 class FileCleanupCron {
   private intervalId: NodeJS.Timeout | null = null
@@ -23,7 +24,7 @@ class FileCleanupCron {
         await cleanupOldFiles()
         this.lastRunAt = Date.now()
       } catch (error) {
-        console.error('Error during file cleanup:', error)
+        logger.error('Error during file cleanup:', error)
       } finally {
         this.activeCleanup = null
       }

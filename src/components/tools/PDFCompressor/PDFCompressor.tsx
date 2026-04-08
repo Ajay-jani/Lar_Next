@@ -1,9 +1,12 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { PDFDocument } from 'pdf-lib'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { ToolPageIntro } from '@/components/tools/shared/ToolPageIntro'
+import { ToolStatGrid } from '@/components/tools/shared/ToolStatGrid'
+import { isPdfFile } from '@/lib/pdf-files'
+import { loadPdfLib } from '@/lib/pdf-runtime'
 
 interface CompressionSettings {
   compressionMode: 'balanced' | 'maximum' | 'lossless'
@@ -16,7 +19,7 @@ interface CompressionResult {
 }
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
-const SUPPORTED_TYPES = ['application/pdf']
+const PDF_FILE_ACCEPT = '.pdf,application/pdf'
 
 export function PDFCompressor() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -47,7 +50,7 @@ export function PDFCompressor() {
   }, [result])
 
   const validateFile = useCallback((file: File): string | null => {
-    if (!SUPPORTED_TYPES.includes(file.type)) {
+    if (!isPdfFile(file)) {
       return 'Please select a valid PDF file'
     }
 
@@ -67,6 +70,7 @@ export function PDFCompressor() {
     setNote(null)
 
     try {
+      const { PDFDocument } = await loadPdfLib()
       const sourceBuffer = await file.arrayBuffer()
       const pdfDoc = await PDFDocument.load(sourceBuffer, {
         updateMetadata: false,
@@ -184,28 +188,16 @@ export function PDFCompressor() {
   }, [selectedFile])
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-foreground mb-4">PDF Compressor</h1>
-        <p className="text-muted-foreground text-lg">
-          Upload once and get an instant balanced optimization, then only open settings if you
-          want to push for a smaller or higher-fidelity result.
-        </p>
-        <div className="flex justify-center gap-4 mt-4 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-primary rounded-full"></div>
-            <span className="text-muted-foreground">Real PDF optimization</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-success rounded-full"></div>
-            <span className="text-muted-foreground">In-browser processing</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-warning rounded-full"></div>
-            <span className="text-muted-foreground">True size reporting</span>
-          </div>
-        </div>
-      </div>
+    <div className="container mx-auto max-w-4xl px-4 py-8">
+      <ToolPageIntro
+        title="PDF Compressor"
+        description="Upload once and get an instant balanced optimization, then only open settings if you want to push for a smaller or higher-fidelity result."
+        features={[
+          { label: 'Real PDF optimization', tone: 'primary' },
+          { label: 'In-browser processing', tone: 'success' },
+          { label: 'True size reporting', tone: 'warning' },
+        ]}
+      />
 
       <div className="space-y-6">
         <Card>
@@ -216,7 +208,7 @@ export function PDFCompressor() {
             <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
               <input
                 type="file"
-                accept={SUPPORTED_TYPES.join(',')}
+                accept={PDF_FILE_ACCEPT}
                 onChange={handleFileSelect}
                 className="hidden"
                 id="file-upload"
@@ -337,30 +329,17 @@ export function PDFCompressor() {
               <CardTitle>Optimization Results</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-4 mb-6 text-center">
-                <div>
-                  <div className="text-2xl font-bold text-foreground">
-                    {formatFileSize(result.originalSize)}
-                  </div>
-                  <div className="text-muted-foreground text-sm">Original</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-success">
-                    {formatFileSize(result.newSize)}
-                  </div>
-                  <div className="text-muted-foreground text-sm">Optimized</div>
-                </div>
-                <div>
-                  <div
-                    className={`text-2xl font-bold ${
-                      sizeDelta >= 0 ? 'text-info' : 'text-warning'
-                    }`}
-                  >
-                    {sizeChangePercent.toFixed(1)}%
-                  </div>
-                  <div className="text-muted-foreground text-sm">Size Change</div>
-                </div>
-              </div>
+              <ToolStatGrid
+                items={[
+                  { label: 'Original', value: formatFileSize(result.originalSize) },
+                  { label: 'Optimized', value: formatFileSize(result.newSize), tone: 'success' },
+                  {
+                    label: 'Size Change',
+                    value: `${sizeChangePercent.toFixed(1)}%`,
+                    tone: sizeDelta >= 0 ? 'info' : 'warning',
+                  },
+                ]}
+              />
 
               <a
                 href={result.downloadUrl}

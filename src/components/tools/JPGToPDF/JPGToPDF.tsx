@@ -1,15 +1,16 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
+import Image from 'next/image'
 import { ChevronDown, ChevronUp, FileImage, Upload } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { createPdfDownloadName, formatFileSize } from '@/lib/page-ranges'
-import {
-  convertImagesToPdf,
-  type PdfImageFit,
-  type PdfPageOrientation,
-  type PdfPageSizePreset,
+import { loadJpgToPdfModule } from '@/lib/pdf-runtime'
+import type {
+  PdfImageFit,
+  PdfPageOrientation,
+  PdfPageSizePreset,
 } from '@/lib/jpg-to-pdf'
 
 interface SourceImage {
@@ -144,6 +145,7 @@ export function JPGToPDF() {
     clearResult()
 
     try {
+      const { convertImagesToPdf } = await loadJpgToPdfModule()
       const pdfBytes = await convertImagesToPdf(
         await Promise.all(images.map(async image => ({
           name: image.file.name,
@@ -219,10 +221,13 @@ export function JPGToPDF() {
                 <div className="space-y-3">
                   {images.map((image, index) => (
                     <div key={image.id} className="rounded-2xl border border-border bg-background p-4">
-                      <div className="flex gap-4">
-                        <img
+                      <div className="flex flex-col gap-4 sm:flex-row">
+                        <Image
                           src={image.previewUrl}
                           alt={image.file.name}
+                          width={80}
+                          height={96}
+                          unoptimized
                           className="h-24 w-20 rounded-xl object-cover"
                         />
                         <div className="min-w-0 flex-1">
@@ -362,7 +367,7 @@ export function JPGToPDF() {
                   {result.pageCount} page{result.pageCount === 1 ? '' : 's'} · {formatFileSize(result.size)}
                 </p>
               </div>
-              <a href={result.url} download={result.fileName}>
+              <a href={result.url} download={result.fileName} className="w-full md:w-auto">
                 <Button type="button">Download PDF</Button>
               </a>
             </CardContent>

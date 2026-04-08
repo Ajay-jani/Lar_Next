@@ -2,8 +2,8 @@ import React from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ThemeProvider } from '@/lib/providers/ThemeProvider';
-import { ThemeToggle } from '@/components/layout/ThemeToggle';
-import { Zap, Menu } from 'lucide-react';
+import { SiteHeader } from '@/components/layout/SiteHeader';
+import { Zap } from 'lucide-react';
 import { featuredTools } from '@/lib/tool-catalog';
 import './globals.css';
 
@@ -26,47 +26,7 @@ export default function RootLayout({
       <body className="font-sans antialiased" suppressHydrationWarning>
         <ThemeProvider defaultTheme="system" storageKey="utility-hub-theme">
           <div className="min-h-screen bg-background">
-            <header className="sticky top-0 z-50 w-full glass border-b">
-              <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex h-16 items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <Link href="/" className="flex items-center space-x-3 group">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 group-hover:scale-105 transition-transform">
-                        <Zap className="h-5 w-5 text-primary-foreground" />
-                      </div>
-                      <span className="text-xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                        UtilityHub
-                      </span>
-                    </Link>
-                  </div>
-                  
-                  <nav className="hidden md:flex items-center space-x-8">
-                    <Link 
-                      href="/" 
-                      className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors relative group"
-                    >
-                      Home
-                      <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
-                    </Link>
-                    <Link 
-                      href="/tools" 
-                      className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors relative group"
-                    >
-                      All Tools
-                      <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
-                    </Link>
-                    <ThemeToggle />
-                  </nav>
-
-                  <div className="flex md:hidden items-center space-x-2">
-                    <ThemeToggle />
-                    <button className="p-2 hover:bg-accent rounded-lg transition-colors">
-                      <Menu className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </header>
+            <SiteHeader />
             
             <main className="flex-1">{children}</main>
             
@@ -121,7 +81,7 @@ export default function RootLayout({
                 
                 <div className="mt-12 pt-8 border-t border-border/50 text-center">
                   <p className="text-sm text-muted-foreground">
-                    © 2024 UtilityHub. Built with Next.js and Tailwind CSS. All tools process data locally for your privacy.
+                    © 2026 UtilityHub. Built with Next.js and Tailwind CSS. All tools process data locally for your privacy.
                   </p>
                 </div>
               </div>

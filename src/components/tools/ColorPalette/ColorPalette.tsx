@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { ToolPageIntro } from '@/components/tools/shared/ToolPageIntro'
 
 interface ColorFormat {
   hex: string
@@ -314,27 +315,16 @@ export function ColorPalette() {
   }, [])
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-foreground mb-4">Color Palette Generator</h1>
-        <p className="text-muted-foreground text-lg">
-          Create beautiful color harmonies and export them in multiple formats
-        </p>
-        <div className="flex justify-center gap-4 mt-4 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-primary rounded-full"></div>
-            <span className="text-muted-foreground">Color harmonies</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-success rounded-full"></div>
-            <span className="text-muted-foreground">Multiple formats</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-warning rounded-full"></div>
-            <span className="text-muted-foreground">Export ready</span>
-          </div>
-        </div>
-      </div>
+    <div className="container mx-auto max-w-7xl px-4 py-8">
+      <ToolPageIntro
+        title="Color Palette Generator"
+        description="Create balanced color harmonies and export them in formats ready for design and development."
+        features={[
+          { label: 'Color harmonies', tone: 'primary' },
+          { label: 'Multiple formats', tone: 'success' },
+          { label: 'Export ready', tone: 'warning' },
+        ]}
+      />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         {/* Settings Panel */}
@@ -491,7 +481,7 @@ export function ColorPalette() {
           {/* Generated Palette */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+              <CardTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 Generated Palette
                 <Button
                   onClick={generatePalette}
@@ -570,10 +560,10 @@ export function ColorPalette() {
                   <div className="space-y-3">
                     <h4 className="text-sm font-semibold text-foreground mb-3">Color Formats</h4>
                     {Object.entries(colorFormats).map(([format, value]) => (
-                      <div key={format} className="flex items-center justify-between p-2 rounded bg-muted/50">
+                      <div key={format} className="flex flex-col gap-2 rounded bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between">
                         <span className="text-sm font-medium text-foreground uppercase">{format}</span>
-                        <div className="flex items-center gap-2">
-                          <code className="text-sm font-mono text-muted-foreground">{value}</code>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <code className="break-all text-sm font-mono text-muted-foreground">{value}</code>
                           <Button
                             size="sm"
                             variant="outline"
